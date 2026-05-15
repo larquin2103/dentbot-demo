@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://sonriebot-demo.netlify.app/sitemap.xml

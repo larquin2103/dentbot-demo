@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+  <defs>
+    <linearGradient id="toothGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4EC9A0;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2A7D63;stop-opacity:1" />
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Fondo circular -->
+  <circle cx="24" cy="24" r="22" fill="#0E1117" stroke="#2E3848" stroke-width="1.5"/>
+  
+  <!-- Diente estilizado -->
+  <g filter="url(#glow)">
+    <path d="M16 14 C16 14 14 18 14 22 C14 28 17 32 20 32 C22 32 23 30 24 30 C25 30 26 32 28 32 C31 32 34 28 34 22 C34 18 32 14 32 14 C32 14 32 10 28 10 C26 10 25 12 24 12 C23 12 22 10 20 10 C16 10 16 14 16 14 Z" 
+          fill="url(#toothGrad)" stroke="#4EC9A0" stroke-width="1" stroke-linejoin="round"/>
+    
+    <!-- Brillo -->
+    <ellipse cx="20" cy="18" rx="3" ry="4" fill="#F0EDE6" opacity="0.3"/>
+  </g>
+  
+  <!-- Detalle premium -->
+  <circle cx="24" cy="24" r="22" fill="none" stroke="#4EC9A0" stroke-width="0.5" opacity="0.3"/>
+</svg>
