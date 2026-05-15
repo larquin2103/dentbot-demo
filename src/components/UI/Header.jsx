@@ -68,6 +68,7 @@ export default function Header({ view, onViewChange }) {
 
   return (
     <motion.header
+      className="app-header"
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.25 }}
@@ -78,11 +79,13 @@ export default function Header({ view, onViewChange }) {
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
+        gap: '0.75rem',
         zIndex: 1000,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+      <div className="app-header__brand" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0, flex: '1 1 auto' }}>
         <div
+          className="app-header__logo"
           style={{
             width: 40,
             height: 40,
@@ -96,8 +99,9 @@ export default function Header({ view, onViewChange }) {
         >
           <LogoMark color={theme.colors.primary} />
         </div>
-        <div>
+        <div style={{ minWidth: 0 }}>
           <h1
+            className="app-header__title"
             style={{
               margin: 0,
               fontSize: theme.typography.sizes.lg,
@@ -105,17 +109,24 @@ export default function Header({ view, onViewChange }) {
               fontWeight: 600,
               letterSpacing: '-0.015em',
               lineHeight: 1.2,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
             }}
           >
             Clínica Dental Sonrisa Perfecta
           </h1>
           <p
+            className="app-header__subtitle"
             style={{
               margin: 0,
               fontSize: theme.typography.sizes.xs,
               color: theme.colors.textSecondary,
               fontWeight: 500,
               letterSpacing: '0.02em',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
             }}
           >
             Panel de atención y agenda clínica
@@ -123,8 +134,9 @@ export default function Header({ view, onViewChange }) {
         </div>
       </div>
 
-      <nav style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+      <nav className="app-header__nav" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
         <div
+          className="app-header__tabs"
           style={{
             display: 'flex',
             gap: 2,
@@ -134,13 +146,13 @@ export default function Header({ view, onViewChange }) {
             borderRadius: theme.borderRadius.md,
           }}
         >
-          <button onClick={() => onViewChange('chat')} style={navButton(view === 'chat')}>
+          <button onClick={() => onViewChange('chat')} style={navButton(view === 'chat')} aria-label="Conversación">
             <ChatIcon color={view === 'chat' ? '#FFFFFF' : theme.colors.textSecondary} />
-            Conversación
+            <span className="app-header__tab-label">Chat</span>
           </button>
-          <button onClick={() => onViewChange('calendar')} style={navButton(view === 'calendar')}>
+          <button onClick={() => onViewChange('calendar')} style={navButton(view === 'calendar')} aria-label="Agenda">
             <CalendarIcon color={view === 'calendar' ? '#FFFFFF' : theme.colors.textSecondary} />
-            Agenda
+            <span className="app-header__tab-label">Agenda</span>
           </button>
         </div>
 
@@ -159,6 +171,7 @@ export default function Header({ view, onViewChange }) {
             alignItems: 'center',
             justifyContent: 'center',
             color: theme.colors.textSecondary,
+            flexShrink: 0,
           }}
         >
           {isDark ? <SunIcon color={theme.colors.textSecondary} /> : <MoonIcon color={theme.colors.textSecondary} />}

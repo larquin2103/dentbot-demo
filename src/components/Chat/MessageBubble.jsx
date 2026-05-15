@@ -67,7 +67,7 @@ export default function MessageBubble({ role, content, timestamp, theme }) {
     >
       {!isUser && <BotAvatar theme={theme} />}
 
-      <div style={{ maxWidth: '72%' }}>
+      <div style={{ maxWidth: 'min(72%, calc(100% - 48px))' }}>
         <motion.div
           initial={{ opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
