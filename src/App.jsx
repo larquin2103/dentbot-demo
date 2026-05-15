@@ -5,8 +5,8 @@ import ChatInterface from './components/Chat/ChatInterface'
 import CalendarView from './components/Dashboard/CalendarView'
 import Header from './components/UI/Header'
 import { motion, AnimatePresence } from 'framer-motion'
-import './App.css'
-import { testOpenRouterConnection } from './services/test-openrouter';
+import './App.css';
+
 
 function App() {
   const [view, setView] = useState('chat')
