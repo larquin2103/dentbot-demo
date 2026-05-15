@@ -363,6 +363,7 @@ export default function ChatInterface() {
       display: 'flex',
       flexDirection: 'column',
       height: '100%',
+      width: '100%',
       maxWidth: '780px',
       margin: '0 auto',
       background: theme.colors.background,
@@ -376,20 +377,28 @@ export default function ChatInterface() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
+        gap: '0.5rem',
       }}>
         <div style={{
           display: 'flex', alignItems: 'center', gap: '0.5rem',
           color: theme.colors.textSecondary, fontSize: theme.typography.sizes.sm,
           fontWeight: 500,
+          minWidth: 0,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
         }}>
           <span style={{
             width: 8, height: 8, borderRadius: '50%',
             background: theme.colors.success, display: 'inline-block',
             boxShadow: `0 0 0 3px ${theme.colors.success}25`,
+            flexShrink: 0,
           }} />
-          {state.bookingFlow.active
-            ? 'Reserva en curso'
-            : 'Asistente en línea · Dr. Alejandro Martínez disponible'}
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {state.bookingFlow.active
+              ? 'Reserva en curso'
+              : 'Asistente en línea · Dr. Alejandro Martínez'}
+          </span>
         </div>
 
         {state.bookingFlow.active && (
@@ -409,8 +418,8 @@ export default function ChatInterface() {
 
       {/* Messages Area */}
       <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        <div style={{
-          flex: 1, overflowY: 'auto', padding: theme.spacing.lg,
+        <div className="chat-messages" style={{
+          flex: 1, overflowY: 'auto', padding: 'clamp(0.75rem, 3vw, 1.25rem)',
           display: 'flex', flexDirection: 'column', gap: theme.spacing.md
         }}>
           {/* Welcome Message */}
@@ -464,8 +473,9 @@ export default function ChatInterface() {
         </div>
 
         {/* Input Area */}
-        <div style={{
-          padding: '1rem 1.25rem 1.25rem',
+        <div className="chat-input-area" style={{
+          padding: 'clamp(0.625rem, 2.5vw, 1rem) clamp(0.75rem, 3vw, 1.25rem)',
+          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + clamp(0.75rem, 3vw, 1.25rem))',
           background: theme.colors.surface,
           borderTop: `1px solid ${theme.colors.border}`,
         }}>
