@@ -9,3 +9,4 @@
 .env.production.local
 apigoogle
 node_modules
+dist
