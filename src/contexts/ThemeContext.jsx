@@ -2,77 +2,68 @@ import { createContext, useContext, useState, useEffect } from 'react'
 
 const ThemeContext = createContext()
 
-// Paleta profesional para clínica dental
 const lightTheme = {
   colors: {
-    // Colores principales - Azul médico profesional
-    primary: '#0D6B7D',        // Azul petróleo médico
-    primaryLight: '#E8F4F8',   // Fondo azul muy claro
-    primaryDark: '#0A4F5C',    // Azul oscuro para hover
-    
-    // Secundario - Verde menta salud
-    secondary: '#2EBD85',      // Verde menta
-    secondaryLight: '#E8F8F2', // Fondo verde muy claro
-    
-    // Acento - Coral suave para llamadas a la acción
-    accent: '#FF6B6B',         // Coral
-    accentLight: '#FFF0F0',    // Fondo coral claro
-    
-    // Fondos
-    background: '#F7F9FC',     // Gris azulado muy claro
-    surface: '#FFFFFF',        // Blanco puro para tarjetas
-    surfaceHover: '#F0F4F8',   // Hover suave
-    
-    // Texto
-    text: '#1A2332',           // Azul oscuro para texto principal
-    textSecondary: '#5A6B7F',  // Gris azulado para texto secundario
-    textLight: '#8FA0B4',      // Gris claro para texto terciario
-    
-    // Bordes
-    border: '#E2E8F0',         // Gris muy claro
-    borderLight: '#F0F4F8',    // Casi blanco
-    
-    // Estados
-    success: '#2EBD85',        // Verde éxito
-    successLight: '#E8F8F2',   // Fondo verde claro
-    warning: '#F59E0B',        // Ámbar
-    warningLight: '#FEF3C7',   // Fondo ámbar claro
-    error: '#EF4444',          // Rojo
-    errorLight: '#FEE2E2',     // Fondo rojo claro
-    info: '#3B82F6',          // Azul info
-    infoLight: '#EFF6FF',      // Fondo azul claro
-    
-    // Gradientes
-    gradient: 'linear-gradient(135deg, #0D6B7D 0%, #2EBD85 100%)',
-    gradientLight: 'linear-gradient(135deg, #E8F4F8 0%, #E8F8F2 100%)',
-    
-    // Sombras
-    cardShadow: '0 1px 3px rgba(13, 107, 125, 0.08), 0 1px 2px rgba(13, 107, 125, 0.06)',
-    cardHover: '0 4px 6px rgba(13, 107, 125, 0.1), 0 2px 4px rgba(13, 107, 125, 0.06)',
-    cardElevated: '0 10px 15px rgba(13, 107, 125, 0.1), 0 4px 6px rgba(13, 107, 125, 0.05)',
-    
-    // Colores de servicios
+    primary: '#0E4F66',
+    primaryLight: '#E6F0F4',
+    primaryDark: '#0A3A4D',
+
+    secondary: '#0F766E',
+    secondaryLight: '#ECFDF5',
+
+    accent: '#B45309',
+    accentLight: '#FEF3C7',
+
+    background: '#F8FAFC',
+    surface: '#FFFFFF',
+    surfaceHover: '#F1F5F9',
+    surfaceMuted: '#F8FAFC',
+
+    text: '#0F172A',
+    textSecondary: '#475569',
+    textLight: '#94A3B8',
+
+    border: '#E2E8F0',
+    borderLight: '#F1F5F9',
+    borderStrong: '#CBD5E1',
+
+    success: '#059669',
+    successLight: '#ECFDF5',
+    warning: '#B45309',
+    warningLight: '#FEF3C7',
+    error: '#B91C1C',
+    errorLight: '#FEF2F2',
+    info: '#0369A1',
+    infoLight: '#EFF6FF',
+
+    gradient: 'linear-gradient(135deg, #0E4F66 0%, #0F766E 100%)',
+    gradientLight: 'linear-gradient(135deg, #E6F0F4 0%, #ECFDF5 100%)',
+
+    cardShadow: '0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06)',
+    cardHover: '0 4px 6px rgba(15, 23, 42, 0.05), 0 2px 4px rgba(15, 23, 42, 0.04)',
+    cardElevated: '0 10px 25px rgba(15, 23, 42, 0.08), 0 4px 10px rgba(15, 23, 42, 0.04)',
+
     services: {
-      consulta: '#2EBD85',      // Verde
-      limpieza: '#3B82F6',      // Azul
-      blanqueamiento: '#8B5CF6', // Púrpura
-      ortodoncia: '#F59E0B',    // Ámbar
-      implante: '#EF4444',      // Rojo
-      urgencia: '#FF6B6B'       // Coral
+      consulta: '#0E7490',
+      limpieza: '#0369A1',
+      blanqueamiento: '#0F766E',
+      ortodoncia: '#A16207',
+      implante: '#B91C1C',
+      urgencia: '#C2410C'
     }
   },
-  
+
   typography: {
-    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
     sizes: {
-      xs: '0.75rem',    // 12px
-      sm: '0.8125rem',  // 13px
-      base: '0.875rem', // 14px
-      lg: '1rem',       // 16px
-      xl: '1.125rem',   // 18px
-      '2xl': '1.25rem', // 20px
-      '3xl': '1.5rem',  // 24px
-      '4xl': '1.875rem' // 30px
+      xs: '0.75rem',
+      sm: '0.8125rem',
+      base: '0.9375rem',
+      lg: '1rem',
+      xl: '1.125rem',
+      '2xl': '1.375rem',
+      '3xl': '1.75rem',
+      '4xl': '2.25rem'
     },
     weights: {
       normal: 400,
@@ -82,81 +73,87 @@ const lightTheme = {
     },
     lineHeights: {
       tight: 1.25,
-      normal: 1.5,
+      normal: 1.55,
       relaxed: 1.75
     }
   },
-  
+
   spacing: {
-    xs: '0.25rem',   // 4px
-    sm: '0.5rem',    // 8px
-    md: '0.75rem',   // 12px
-    lg: '1rem',      // 16px
-    xl: '1.5rem',    // 24px
-    '2xl': '2rem',   // 32px
-    '3xl': '2.5rem'  // 40px
+    xs: '0.25rem',
+    sm: '0.5rem',
+    md: '0.75rem',
+    lg: '1rem',
+    xl: '1.5rem',
+    '2xl': '2rem',
+    '3xl': '2.5rem'
   },
-  
+
   borderRadius: {
-    xs: '0.25rem',   // 4px
-    sm: '0.375rem',  // 6px
-    md: '0.5rem',    // 8px
-    lg: '0.75rem',   // 12px
-    xl: '1rem',      // 16px
-    '2xl': '1.25rem', // 20px
+    xs: '0.25rem',
+    sm: '0.375rem',
+    md: '0.5rem',
+    lg: '0.625rem',
+    xl: '0.875rem',
+    '2xl': '1.125rem',
     full: '9999px'
   },
-  
+
   animations: {
-    duration: {
-      fast: '0.15s',
-      normal: '0.2s',
-      slow: '0.3s'
-    },
+    duration: { fast: '0.15s', normal: '0.2s', slow: '0.3s' },
     easing: 'cubic-bezier(0.4, 0, 0.2, 1)'
   }
 }
 
-// Tema oscuro con los mismos ajustes
 const darkTheme = {
   ...lightTheme,
   colors: {
     ...lightTheme.colors,
-    primary: '#4FD1C5',
-    primaryLight: '#1A2F3A',
-    primaryDark: '#38B2AC',
-    secondary: '#48BB78',
-    secondaryLight: '#1A2F2A',
-    accent: '#FC8181',
-    accentLight: '#3A1F1F',
-    background: '#0F1A24',
-    surface: '#1A2F3A',
-    surfaceHover: '#223B48',
-    text: '#E2E8F0',
-    textSecondary: '#A0AEC0',
-    textLight: '#718096',
-    border: '#2D4452',
-    borderLight: '#223B48',
-    success: '#48BB78',
-    successLight: '#1A2F2A',
-    warning: '#F6AD55',
-    warningLight: '#3A2F1A',
-    error: '#FC8181',
-    errorLight: '#3A1F1F',
-    info: '#63B3ED',
-    infoLight: '#1A2F3A',
-    gradient: 'linear-gradient(135deg, #4FD1C5 0%, #48BB78 100%)',
-    gradientLight: 'linear-gradient(135deg, #1A2F3A 0%, #1A2F2A 100%)',
-    cardShadow: '0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2)',
-    cardHover: '0 4px 6px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.3)',
-    cardElevated: '0 10px 15px rgba(0, 0, 0, 0.5), 0 4px 6px rgba(0, 0, 0, 0.4)',
+    primary: '#14B8A6',
+    primaryLight: '#134E4A',
+    primaryDark: '#0F766E',
+
+    secondary: '#22D3EE',
+    secondaryLight: '#164E63',
+
+    accent: '#F59E0B',
+    accentLight: '#451A03',
+
+    background: '#0F172A',
+    surface: '#1E293B',
+    surfaceHover: '#334155',
+    surfaceMuted: '#172033',
+
+    text: '#F1F5F9',
+    textSecondary: '#CBD5E1',
+    textLight: '#94A3B8',
+
+    border: '#334155',
+    borderLight: '#1E293B',
+    borderStrong: '#475569',
+
+    success: '#10B981',
+    successLight: '#064E3B',
+    warning: '#F59E0B',
+    warningLight: '#451A03',
+    error: '#EF4444',
+    errorLight: '#450A0A',
+    info: '#38BDF8',
+    infoLight: '#0C4A6E',
+
+    gradient: 'linear-gradient(135deg, #14B8A6 0%, #0891B2 100%)',
+    gradientLight: 'linear-gradient(135deg, #134E4A 0%, #164E63 100%)',
+
+    cardShadow: '0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3)',
+    cardHover: '0 4px 6px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.4)',
+    cardElevated: '0 10px 25px rgba(0, 0, 0, 0.5), 0 4px 10px rgba(0, 0, 0, 0.4)',
+
     services: {
-      consulta: '#48BB78',
-      limpieza: '#63B3ED',
-      blanqueamiento: '#B794F4',
-      ortodoncia: '#F6AD55',
-      implante: '#FC8181',
-      urgencia: '#FF6B6B'
+      consulta: '#22D3EE',
+      limpieza: '#38BDF8',
+      blanqueamiento: '#2DD4BF',
+      ortodoncia: '#F59E0B',
+      implante: '#F87171',
+      urgencia: '#FB923C'
     }
   }
 }
@@ -172,7 +169,6 @@ export function ThemeProvider({ children }) {
   useEffect(() => {
     localStorage.setItem('sonriebot-theme', JSON.stringify(isDark))
     document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light')
-    // Aplicar color de fondo al body
     document.body.style.backgroundColor = theme.colors.background
   }, [isDark, theme])
 

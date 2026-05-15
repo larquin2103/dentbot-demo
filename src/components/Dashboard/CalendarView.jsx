@@ -17,14 +17,14 @@ import {
 } from '../../services/exportService';
 import CalendarSync from '../Calendar/CalendarSync';
 
-// Servicios con colores y tiempos
+// Servicios con colores y tiempos (paleta profesional, sin morados ni neón)
 const SERVICES = {
-  consulta: { name: 'Primera consulta', color: '#2EBD85', duration: 30, icon: '🦷', price: 'Gratis' },
-  limpieza: { name: 'Limpieza dental', color: '#3B82F6', duration: 30, icon: '✨', price: '60€' },
-  blanqueamiento: { name: 'Blanqueamiento', color: '#8B5CF6', duration: 90, icon: '😁', price: '150€' },
-  ortodoncia: { name: 'Ortodoncia', color: '#F59E0B', duration: 30, icon: '🦷', price: 'Consulta gratis' },
-  implante: { name: 'Implante dental', color: '#EF4444', duration: 90, icon: '🔩', price: '1.200€' },
-  urgencia: { name: 'Urgencia', color: '#FF6B6B', duration: 30, icon: '⚡', price: '90€' }
+  consulta: { name: 'Primera consulta', color: '#0E7490', duration: 30, icon: '🦷', price: 'Gratis' },
+  limpieza: { name: 'Limpieza dental', color: '#0369A1', duration: 30, icon: '✨', price: '60€' },
+  blanqueamiento: { name: 'Blanqueamiento', color: '#0F766E', duration: 90, icon: '😁', price: '150€' },
+  ortodoncia: { name: 'Ortodoncia', color: '#A16207', duration: 30, icon: '🦷', price: 'Consulta gratis' },
+  implante: { name: 'Implante dental', color: '#B91C1C', duration: 90, icon: '🔩', price: '1.200€' },
+  urgencia: { name: 'Urgencia', color: '#C2410C', duration: 30, icon: '⚡', price: '90€' }
 };
 
 const WORK_HOURS = {
@@ -196,21 +196,21 @@ export default function CalendarView() {
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: theme.spacing.lg }}>
           <div>
-            <h2 style={{ color: theme.colors.text, margin: 0, fontSize: theme.typography.sizes['2xl'] }}>
-              📅 Gestión de Citas
+            <h2 style={{ color: theme.colors.text, margin: 0, fontSize: theme.typography.sizes['2xl'], fontWeight: 600, letterSpacing: '-0.015em' }}>
+              Agenda clínica
             </h2>
-            <p style={{ color: theme.colors.textSecondary, margin: '4px 0 0' }}>
-              Dr. Alejandro Martínez - Planificación diaria
+            <p style={{ color: theme.colors.textSecondary, margin: '4px 0 0', fontSize: theme.typography.sizes.sm }}>
+              Dr. Alejandro Martínez · Planificación y disponibilidad
             </p>
           </div>
-          
+
           <div style={{ display: 'flex', gap: theme.spacing.md, flexWrap: 'wrap' }}>
-            <StatCard icon="📅" label="Citas hoy" value={getAppointmentsForDay(new Date()).length} subtitle="programadas" color={theme.colors.primary} theme={theme} />
-            <StatCard icon="📊" label="Esta semana" value={appointments.filter(apt => {
+            <StatCard iconType="calendar" label="Citas hoy" value={getAppointmentsForDay(new Date()).length} subtitle="programadas" color={theme.colors.primary} theme={theme} />
+            <StatCard iconType="week" label="Esta semana" value={appointments.filter(apt => {
               const aptDate = new Date(apt.date), today = new Date();
               return aptDate >= today && aptDate <= addHours(today, 168);
             }).length} subtitle="citas" color={theme.colors.secondary} theme={theme} />
-            <StatCard icon="💰" label="Ingresos mes" value={`${appointments.reduce((sum, apt) => {
+            <StatCard iconType="revenue" label="Ingresos mes" value={`${appointments.reduce((sum, apt) => {
               const price = SERVICES[apt.service]?.price || '0';
               return sum + (parseInt(price.replace(/[^0-9]/g, '')) || 0);
             }, 0)}€`} subtitle="estimado" color={theme.colors.accent} theme={theme} />
@@ -368,24 +368,48 @@ export default function CalendarView() {
 
 // --- COMPONENTES HELPER ---
 
-function StatCard({ label, value, subtitle, color, icon, theme }) {
+function StatIcon({ type, color }) {
+  const common = {
+    width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none',
+    stroke: color, strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round',
+  };
+  if (type === 'calendar') {
+    return (
+      <svg {...common}><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
+    );
+  }
+  if (type === 'week') {
+    return (
+      <svg {...common}><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" /></svg>
+    );
+  }
+  if (type === 'revenue') {
+    return (
+      <svg {...common}><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
+    );
+  }
+  return null;
+}
+
+function StatCard({ label, value, subtitle, color, iconType, theme }) {
   return (
     <motion.div
-      whileHover={{ y: -2, boxShadow: theme.colors.cardHover }}
+      whileHover={{ y: -1 }}
+      transition={{ duration: 0.15 }}
       style={{
         background: theme.colors.surface, borderRadius: theme.borderRadius.lg,
-        padding: theme.spacing.md, border: `1px solid ${theme.colors.border}`,
-        boxShadow: theme.colors.cardShadow, display: 'flex', alignItems: 'center',
-        gap: theme.spacing.md, minWidth: '150px'
+        padding: '0.875rem 1rem', border: `1px solid ${theme.colors.border}`,
+        display: 'flex', alignItems: 'center',
+        gap: '0.875rem', minWidth: '160px'
       }}
     >
-      <div style={{ width: 42, height: 42, borderRadius: theme.borderRadius.md, background: `${color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', flexShrink: 0 }}>
-        {icon}
+      <div style={{ width: 38, height: 38, borderRadius: theme.borderRadius.md, background: `${color}14`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <StatIcon type={iconType} color={color} />
       </div>
       <div>
-        <div style={{ fontSize: theme.typography.sizes['2xl'], fontWeight: 700, color: theme.colors.text, lineHeight: 1.1 }}>{value}</div>
-        <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textSecondary, marginTop: 1 }}>{label}</div>
-        {subtitle && <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textLight }}>{subtitle}</div>}
+        <div style={{ fontSize: theme.typography.sizes['2xl'], fontWeight: 700, color: theme.colors.text, lineHeight: 1.1, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.015em' }}>{value}</div>
+        <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textSecondary, marginTop: 2, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
+        {subtitle && <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textLight, marginTop: 1 }}>{subtitle}</div>}
       </div>
     </motion.div>
   );

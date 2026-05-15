@@ -1,36 +1,44 @@
-﻿import { motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 export default function QuickResponses({ responses, onAction, theme }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.5 }}
+      transition={{ delay: 0.3, duration: 0.3 }}
       style={{
         display: 'flex',
         flexWrap: 'wrap',
         gap: theme.spacing.sm,
-        padding: theme.spacing.sm,
-        justifyContent: 'center'
+        padding: `${theme.spacing.sm} 0`,
+        justifyContent: 'flex-start',
+        marginLeft: 'calc(32px + 0.5rem)',
       }}
     >
       {responses.map((response) => (
         <motion.button
           key={response.id}
-          whileHover={{ scale: 1.05, y: -2 }}
-          whileTap={{ scale: 0.95 }}
+          whileHover={{ y: -1 }}
+          whileTap={{ scale: 0.98 }}
           onClick={() => onAction(response.action)}
           style={{
-            padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+            padding: '0.5rem 0.875rem',
             background: theme.colors.surface,
             color: theme.colors.text,
-            border: `2px solid ${theme.colors.border}`,
-            borderRadius: theme.borderRadius.xl,
+            border: `1px solid ${theme.colors.border}`,
+            borderRadius: theme.borderRadius.full,
             cursor: 'pointer',
             fontSize: theme.typography.sizes.sm,
             fontWeight: 500,
-            transition: 'all 0.2s',
-            boxShadow: theme.colors.cardShadow
+            transition: 'border-color 0.15s ease, background 0.15s ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = theme.colors.primary;
+            e.currentTarget.style.background = theme.colors.primaryLight;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = theme.colors.border;
+            e.currentTarget.style.background = theme.colors.surface;
           }}
         >
           {response.text}
