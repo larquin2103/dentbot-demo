@@ -363,60 +363,49 @@ export default function ChatInterface() {
       display: 'flex',
       flexDirection: 'column',
       height: '100%',
-      maxWidth: '800px',
+      maxWidth: '780px',
       margin: '0 auto',
       background: theme.colors.background,
       fontFamily: theme.typography.fontFamily
     }}>
-      {/* Header */}
-      <header style={{
-        padding: theme.spacing.lg,
-        background: theme.colors.surface,
+      {/* Status bar */}
+      <div style={{
+        padding: '0.75rem 1.25rem',
+        background: 'transparent',
         borderBottom: `1px solid ${theme.colors.border}`,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        boxShadow: theme.colors.cardShadow
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
-          <motion.div
-            animate={{ scale: [1, 1.2, 1] }}
-            transition={{ duration: 2, repeat: Infinity }}
-            style={{ fontSize: '2rem' }}
-          >
-            🦷
-          </motion.div>
-          <div>
-            <h1 style={{ margin: 0, color: theme.colors.text, fontSize: theme.typography.sizes.xl }}>
-              SonríeBot
-            </h1>
-            <div style={{ 
-              display: 'flex', alignItems: 'center', gap: theme.spacing.xs,
-              color: theme.colors.success, fontSize: theme.typography.sizes.sm
-            }}>
-              <span style={{
-                width: 8, height: 8, borderRadius: '50%',
-                background: theme.colors.success, display: 'inline-block'
-              }}></span>
-              {state.bookingFlow.active ? '📝 Agendando cita...' : 'Online - Dr. Martínez disponible'}
-            </div>
-          </div>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '0.5rem',
+          color: theme.colors.textSecondary, fontSize: theme.typography.sizes.sm,
+          fontWeight: 500,
+        }}>
+          <span style={{
+            width: 8, height: 8, borderRadius: '50%',
+            background: theme.colors.success, display: 'inline-block',
+            boxShadow: `0 0 0 3px ${theme.colors.success}25`,
+          }} />
+          {state.bookingFlow.active
+            ? 'Reserva en curso'
+            : 'Asistente en línea · Dr. Alejandro Martínez disponible'}
         </div>
-        
-        {/* Indicador de flujo de agendamiento */}
+
         {state.bookingFlow.active && (
           <div style={{
-            background: theme.colors.primary,
-            color: 'white',
-            padding: `${theme.spacing.xs} ${theme.spacing.md}`,
+            background: theme.colors.primaryLight,
+            color: theme.colors.primary,
+            padding: '0.25rem 0.625rem',
             borderRadius: theme.borderRadius.full,
-            fontSize: theme.typography.sizes.sm,
-            fontWeight: 600
+            fontSize: theme.typography.sizes.xs,
+            fontWeight: 600,
+            letterSpacing: '0.02em',
           }}>
-            Paso {state.bookingFlow.step}/6
+            Paso {state.bookingFlow.step} de 6
           </div>
         )}
-      </header>
+      </div>
 
       {/* Messages Area */}
       <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -426,10 +415,10 @@ export default function ChatInterface() {
         }}>
           {/* Welcome Message */}
           {state.messages.length === 0 && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
               <MessageBubble
                 role="assistant"
-                content={`👋 ¡Bienvenido a Clínica Dental Sonrisa Perfecta!\n\nSoy SonríeBot, tu asistente dental virtual. Puedo ayudarte a:\n\n✅ Agendar tu cita paso a paso\n✅ Resolver dudas dentales\n✅ Informarte sobre tratamientos y precios\n\n¿En qué puedo ayudarte hoy? 😊`}
+                content={`Bienvenido a Clínica Dental Sonrisa Perfecta.\n\nSoy el asistente virtual de la clínica. Puedo ayudarte con:\n\n•  Solicitar una cita paso a paso\n•  Consultar tratamientos y precios\n•  Resolver dudas sobre horarios o urgencias\n\n¿En qué puedo ayudarte hoy?`}
                 theme={theme}
               />
             </motion.div>
@@ -476,10 +465,9 @@ export default function ChatInterface() {
 
         {/* Input Area */}
         <div style={{
-          padding: theme.spacing.lg,
+          padding: '1rem 1.25rem 1.25rem',
           background: theme.colors.surface,
           borderTop: `1px solid ${theme.colors.border}`,
-          boxShadow: '0 -4px 12px rgba(0,0,0,0.05)'
         }}>
           {/* Botón de cancelar agendamiento */}
           {state.bookingFlow.active && (
@@ -487,61 +475,79 @@ export default function ChatInterface() {
               <button
                 onClick={() => {
                   dispatch({ type: 'CANCEL_BOOKING' });
-                  addMessage({ 
-                    role: 'assistant', 
-                    content: 'Has cancelado el agendamiento. ¿Necesitas algo más? 😊'
+                  addMessage({
+                    role: 'assistant',
+                    content: 'Has cancelado el proceso de reserva. ¿Necesitas algo más?'
                   });
                 }}
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: theme.colors.error,
+                  color: theme.colors.textSecondary,
                   cursor: 'pointer',
                   fontSize: theme.typography.sizes.sm,
-                  textDecoration: 'underline'
+                  fontWeight: 500,
                 }}
               >
-                ❌ Cancelar agendamiento
+                Cancelar reserva
               </button>
             </div>
           )}
-          
-          <div style={{ display: 'flex', gap: theme.spacing.sm, alignItems: 'flex-end' }}>
-            <motion.textarea
+
+          <div style={{
+            display: 'flex',
+            gap: '0.5rem',
+            alignItems: 'flex-end',
+            padding: '0.375rem 0.375rem 0.375rem 0.875rem',
+            background: theme.colors.background,
+            border: `1px solid ${state.bookingFlow.active ? theme.colors.primary : theme.colors.border}`,
+            borderRadius: theme.borderRadius.lg,
+            transition: 'border-color 0.15s ease',
+          }}>
+            <textarea
               ref={inputRef}
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder={state.bookingFlow.active ? 'Escribe tu respuesta...' : 'Escribe tu consulta dental...'}
+              placeholder={state.bookingFlow.active ? 'Escribe tu respuesta…' : 'Escribe tu consulta…'}
               rows={1}
               style={{
-                flex: 1, padding: theme.spacing.md,
-                borderRadius: theme.borderRadius.lg,
-                border: `2px solid ${state.bookingFlow.active ? theme.colors.primary : theme.colors.border}`,
-                background: theme.colors.background,
+                flex: 1,
+                padding: '0.5rem 0',
+                border: 'none',
+                background: 'transparent',
                 color: theme.colors.text,
                 fontSize: theme.typography.sizes.base,
-                resize: 'none', outline: 'none',
-                fontFamily: theme.typography.fontFamily
+                resize: 'none',
+                outline: 'none',
+                fontFamily: theme.typography.fontFamily,
+                lineHeight: 1.5,
               }}
             />
             <motion.button
               onClick={() => handleSendMessage()}
               disabled={!inputMessage.trim()}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              whileTap={{ scale: 0.96 }}
+              aria-label="Enviar mensaje"
               style={{
-                padding: theme.spacing.md,
-                borderRadius: theme.borderRadius.lg,
-                background: inputMessage.trim() ? theme.colors.gradient : theme.colors.border,
-                color: 'white', border: 'none',
+                padding: '0.5rem 0.875rem',
+                borderRadius: theme.borderRadius.md,
+                background: inputMessage.trim() ? theme.colors.primary : theme.colors.borderLight,
+                color: inputMessage.trim() ? '#FFFFFF' : theme.colors.textLight,
+                border: 'none',
                 cursor: inputMessage.trim() ? 'pointer' : 'not-allowed',
-                fontSize: theme.typography.sizes.xl,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                minWidth: '48px', minHeight: '48px'
+                gap: '0.375rem',
+                fontSize: theme.typography.sizes.sm,
+                fontWeight: 600,
+                transition: 'background 0.15s ease',
               }}
             >
-              📤
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <line x1="22" y1="2" x2="11" y2="13" />
+                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+              </svg>
+              Enviar
             </motion.button>
           </div>
         </div>
