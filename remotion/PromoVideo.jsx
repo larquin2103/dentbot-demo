@@ -1,4 +1,4 @@
-import { AbsoluteFill, Sequence, useCurrentFrame, interpolate } from 'remotion'
+import { AbsoluteFill, Sequence, Audio, useCurrentFrame, interpolate } from 'remotion'
 import { IntroScene } from './scenes/IntroScene.jsx'
 import { ProblemScene } from './scenes/ProblemScene.jsx'
 import { ChatScene } from './scenes/ChatScene.jsx'
@@ -6,15 +6,22 @@ import { BookingScene } from './scenes/BookingScene.jsx'
 import { FeaturesScene } from './scenes/FeaturesScene.jsx'
 import { CTAScene } from './scenes/CTAScene.jsx'
 
+import introVO from './audio/01-intro.wav'
+import problemVO from './audio/02-problem.wav'
+import chatVO from './audio/03-chat.wav'
+import bookingVO from './audio/04-booking.wav'
+import featuresVO from './audio/05-features.wav'
+import ctaVO from './audio/06-cta.wav'
+
 const FPS = 30
 
 const sceneDurations = {
-  intro: 90,
-  problem: 90,
-  chat: 210,
-  booking: 180,
-  features: 150,
-  cta: 120,
+  intro: 144,
+  problem: 207,
+  chat: 252,
+  booking: 204,
+  features: 264,
+  cta: 210,
 }
 
 const OVERLAP = 12
@@ -52,31 +59,37 @@ export const PromoVideo = () => {
         <FadeWrap from={0} duration={sceneDurations.intro}>
           <IntroScene />
         </FadeWrap>
+        <Audio src={introVO} volume={1} />
       </Sequence>
       <Sequence from={cumulative.problem} durationInFrames={sceneDurations.problem}>
         <FadeWrap from={0} duration={sceneDurations.problem}>
           <ProblemScene />
         </FadeWrap>
+        <Audio src={problemVO} volume={1} />
       </Sequence>
       <Sequence from={cumulative.chat} durationInFrames={sceneDurations.chat}>
         <FadeWrap from={0} duration={sceneDurations.chat}>
           <ChatScene />
         </FadeWrap>
+        <Audio src={chatVO} volume={1} />
       </Sequence>
       <Sequence from={cumulative.booking} durationInFrames={sceneDurations.booking}>
         <FadeWrap from={0} duration={sceneDurations.booking}>
           <BookingScene />
         </FadeWrap>
+        <Audio src={bookingVO} volume={1} />
       </Sequence>
       <Sequence from={cumulative.features} durationInFrames={sceneDurations.features}>
         <FadeWrap from={0} duration={sceneDurations.features}>
           <FeaturesScene />
         </FadeWrap>
+        <Audio src={featuresVO} volume={1} />
       </Sequence>
       <Sequence from={cumulative.cta} durationInFrames={sceneDurations.cta}>
         <FadeWrap from={0} duration={sceneDurations.cta}>
           <CTAScene />
         </FadeWrap>
+        <Audio src={ctaVO} volume={1} />
       </Sequence>
     </AbsoluteFill>
   )
