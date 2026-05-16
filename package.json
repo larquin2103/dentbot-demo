@@ -8,15 +8,22 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0"
+    "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
+    "video:studio": "remotion studio remotion/index.js",
+    "video:render": "remotion render remotion/index.js SonrieBotPromo out/sonriebot-promo.mp4",
+    "video:render:vertical": "remotion render remotion/index.js SonrieBotPromoVertical out/sonriebot-promo-vertical.mp4"
   },
   "dependencies": {
+    "@remotion/bundler": "^4.0.462",
+    "@remotion/cli": "^4.0.462",
+    "@remotion/renderer": "^4.0.462",
+    "date-fns": "^2.30.0",
+    "framer-motion": "^10.16.4",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^2.5.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "framer-motion": "^10.16.4",
-    "date-fns": "^2.30.0",
-    "jspdf": "^2.5.1",
-    "html2canvas": "^1.4.1"
+    "remotion": "^4.0.462"
   },
   "devDependencies": {
     "@types/react": "^18.2.37",
