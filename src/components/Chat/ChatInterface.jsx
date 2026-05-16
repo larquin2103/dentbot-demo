@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useChat } from '../../contexts/ChatContext';
@@ -6,6 +6,19 @@ import MessageBubble from './MessageBubble';
 import TypingIndicator from './TypingIndicator';
 import QuickResponses from './QuickResponses';
 import RatingSystem from '../UI/RatingSystem';
+import { sendMessageToSonrieBot, generateReengagementMessage } from '../../services/openrouter';
+import { useInactivityWatcher } from '../../hooks/useInactivityWatcher';
+
+const SERVICE_PROMPT_TEXT = `Perfecto, te abro el formulario. ¿Qué servicio quieres reservar?
+
+1. Primera consulta — Gratis
+2. Limpieza dental — 60€
+3. Blanqueamiento — 150€
+4. Ortodoncia — Valoración gratuita
+5. Implante dental — desde 1.200€
+6. Urgencia dental — 90€
+
+Escribe el número o el nombre.`;
 
 // Servicios disponibles
 const SERVICES = [
@@ -16,6 +29,8 @@ const SERVICES = [
   { id: 'implante', name: 'Implante dental', price: '1.200€', duration: '90 min', emoji: '🔩' },
   { id: 'urgencia', name: 'Urgencia dental', price: '90€', duration: '30 min', emoji: '⚡' }
 ];
+
+const BOOKING_TRIGGER = '[INICIAR_RESERVA]';
 
 export default function ChatInterface() {
   const { theme } = useTheme();
@@ -31,6 +46,82 @@ export default function ChatInterface() {
   useEffect(() => {
     scrollToBottom();
   }, [state.messages, state.isTyping]);
+
+  // Inactividad: solo activa cuando hay al menos un mensaje del usuario
+  // y no estamos en medio del flujo de booking
+  const hasUserMessage = state.messages.some(m => m.role === 'user');
+  const inactivityEnabled = hasUserMessage && !state.bookingFlow.active;
+
+  const handleSoftIdle = useCallback(async () => {
+    if (state.reengagement.softSent) return;
+    dispatch({ type: 'MARK_REENGAGEMENT', payload: 'softSent' });
+    try {
+      const text = await generateReengagementMessage(state.messages, 'soft');
+      addMessage({ role: 'assistant', content: text.replace('[INICIAR_RESERVA]', '').trim() });
+    } catch (e) {
+      addMessage({ role: 'assistant', content: '¿Sigues ahí? Si necesitas algo más, te leo.' });
+    }
+  }, [state.messages, state.reengagement.softSent, addMessage, dispatch]);
+
+  const handleHardIdle = useCallback(async () => {
+    if (state.reengagement.hardSent) return;
+    dispatch({ type: 'MARK_REENGAGEMENT', payload: 'hardSent' });
+    try {
+      const text = await generateReengagementMessage(state.messages, 'hard');
+      const trigger = text.includes('[INICIAR_RESERVA]');
+      const cleaned = text.replace('[INICIAR_RESERVA]', '').trim();
+      addMessage({ role: 'assistant', content: cleaned });
+      if (trigger) {
+        setTimeout(() => triggerBookingFlow(), 700);
+      }
+    } catch (e) {
+      addMessage({
+        role: 'assistant',
+        content: 'Antes de irte: la primera consulta es gratuita y dura 30 min. ¿Te reservo hueco esta semana?'
+      });
+    }
+  }, [state.messages, state.reengagement.hardSent, addMessage, dispatch]);
+
+  const { reset: resetIdle } = useInactivityWatcher({
+    enabled: inactivityEnabled,
+    onSoftIdle: handleSoftIdle,
+    onHardIdle: handleHardIdle,
+  });
+
+  // Sincronizar la ref usada por handleSendMessage
+  useEffect(() => {
+    resetIdleRef.current = resetIdle;
+  }, [resetIdle]);
+
+  // Retomar reserva pendiente al cargar (persistida en localStorage)
+  // Reanuda directamente con el prompt del paso en curso para no romper
+  // el handler del flujo (que espera el dato del paso actual).
+  const resumePromptedRef = useRef(false);
+  useEffect(() => {
+    if (resumePromptedRef.current) return;
+    if (!state.bookingFlow.active) return;
+    const { step, data } = state.bookingFlow;
+    if (step === 0) return;
+
+    resumePromptedRef.current = true;
+    const svcName = data?.service?.name;
+
+    const stepPrompts = {
+      1: 'Habíamos empezado una reserva. ¿Qué servicio te interesa?\n\n' + SERVICE_PROMPT_TEXT.split('\n\n').slice(1).join('\n\n'),
+      2: `Retomamos tu reserva${svcName ? ` de ${svcName}` : ''}. ¿Para qué fecha la quieres?`,
+      3: `Seguimos con tu reserva${svcName ? ` de ${svcName}` : ''}. ¿A qué hora prefieres?`,
+      4: 'Casi terminamos. ¿Cuál es tu nombre completo?',
+      5: 'Última recta. ¿Cuál es tu correo electrónico?',
+      6: 'Y por último, ¿tu número de teléfono?'
+    };
+
+    setTimeout(() => {
+      addMessage({
+        role: 'assistant',
+        content: stepPrompts[step] || 'Continuemos con tu reserva.'
+      });
+    }, 500);
+  }, [state.bookingFlow, addMessage]);
 
   // Manejar el flujo de agendamiento
   const handleBookingFlow = async (userInput) => {
@@ -251,84 +342,66 @@ export default function ChatInterface() {
   }
 };
 
-  // Manejar envío de mensajes
+  // Reiniciar el watcher de inactividad cuando el usuario escribe
+  const resetIdleRef = useRef(() => {});
+
+  const triggerBookingFlow = useCallback((preMessage) => {
+    if (preMessage) {
+      addMessage({ role: 'assistant', content: preMessage });
+    }
+    dispatch({ type: 'START_BOOKING_FLOW' });
+    setTimeout(() => {
+      addMessage({ role: 'assistant', content: SERVICE_PROMPT_TEXT });
+    }, 600);
+  }, [addMessage, dispatch]);
+
   const handleSendMessage = async (message = inputMessage) => {
     if (!message.trim()) return;
 
-    // Agregar mensaje del usuario
     addMessage({ role: 'user', content: message.trim() });
     setInputMessage('');
-    
-    // Si estamos en flujo de agendamiento
+
+    // Cualquier respuesta del usuario reinicia inactividad y reabre la
+    // posibilidad de reenviar reenganches
+    dispatch({ type: 'RESET_REENGAGEMENT' });
+    resetIdleRef.current?.();
+
+    // Si estamos en flujo de agendamiento, lo gestiona handleBookingFlow
     if (state.bookingFlow.active) {
       dispatch({ type: 'SET_TYPING', payload: true });
       setTimeout(() => {
         handleBookingFlow(message.trim());
         dispatch({ type: 'SET_TYPING', payload: false });
-      }, 1000);
+      }, 800);
       return;
     }
 
-    // Detectar si el usuario quiere agendar una cita
-    const bookingKeywords = ['cita', 'agendar', 'reservar', 'pedir hora', 'quiero ir', 'cuándo puedo'];
-    const wantsBooking = bookingKeywords.some(keyword => 
-      message.toLowerCase().includes(keyword)
-    );
-
-    if (wantsBooking) {
-      dispatch({ type: 'START_BOOKING_FLOW' });
-      dispatch({ type: 'SET_TYPING', payload: true });
-      
-      setTimeout(() => {
-        addMessage({ 
-          role: 'assistant', 
-          content: '¡Claro! Te ayudaré a agendar tu cita. 📅\n\nPrimero, ¿qué servicio te interesa?\n\n1️⃣ 🦷 Primera consulta - GRATIS\n2️⃣ ✨ Limpieza dental - 60€\n3️⃣ 😁 Blanqueamiento - 150€\n4️⃣ 🦷 Ortodoncia - Valoración gratis\n5️⃣ 🔩 Implante dental - 1.200€\n6️⃣ ⚡ Urgencia dental - 90€\n\nPuedes escribir el número o el nombre del servicio.'
-        });
-        dispatch({ type: 'SET_TYPING', payload: false });
-      }, 1000);
-      return;
-    }
-
-    // Respuesta normal del chat
+    // Respuesta del agente vía LLM
     dispatch({ type: 'SET_TYPING', payload: true });
-    
     try {
-      const response = await getBotResponse(message.trim());
-      setTimeout(() => {
-        addMessage({ 
-          role: 'assistant', 
-          content: response,
-          messageId: Date.now()
-        });
-        dispatch({ type: 'SET_TYPING', payload: false });
-      }, 1000);
+      const raw = await sendMessageToSonrieBot(message.trim(), state.messages);
+      const hasTrigger = raw.includes(BOOKING_TRIGGER);
+      const cleaned = raw.replace(BOOKING_TRIGGER, '').trim();
+
+      addMessage({
+        role: 'assistant',
+        content: cleaned || 'De acuerdo.',
+        messageId: Date.now()
+      });
+
+      if (hasTrigger) {
+        setTimeout(() => triggerBookingFlow(), 700);
+      }
     } catch (error) {
-      addMessage({ 
-        role: 'assistant', 
-        content: 'Disculpa, hubo un error. ¿Puedes intentar de nuevo?',
+      console.error('Bot error:', error);
+      addMessage({
+        role: 'assistant',
+        content: 'Disculpa, ha habido un problema al responder. ¿Puedes repetirlo?',
         error: true
       });
+    } finally {
       dispatch({ type: 'SET_TYPING', payload: false });
     }
-  };
-
-  // Respuesta del bot (puedes integrar OpenRouter aquí después)
-  const getBotResponse = async (message) => {
-    const msg = message.toLowerCase();
-    
-    if (msg.includes('precio') || msg.includes('costo')) {
-      return 'Nuestros precios:\n\n🦷 Primera consulta: GRATIS\n✨ Limpieza: 60€\n😁 Blanqueamiento: 150€\n🦷 Ortodoncia: Valoración gratis\n🔩 Implantes: desde 1.200€\n⚡ Urgencias: 90€\n\n¿Te gustaría agendar una cita? Solo dime "quiero agendar"';
-    }
-    
-    if (msg.includes('horario') || msg.includes('abierto')) {
-      return '🕐 Nuestros horarios:\n\n📅 Lunes a Viernes: 9:00-14:00 y 16:00-19:00\n📅 Sábados: 9:00-13:00\n❌ Domingos: Cerrado\n\n📍 Av. Principal 123, Ciudad Dental\n📞 +34 900 123 456';
-    }
-    
-    if (msg.includes('dolor') || msg.includes('urgencia')) {
-      return '⚠️ ¿Tienes dolor dental? Podemos atenderte con prioridad.\n\nLa consulta de urgencia cuesta 90€.\n\n¿Quieres agendar una cita de urgencia? Solo dime "agendar urgencia"';
-    }
-    
-    return '¡Gracias por tu mensaje! 😊\n\nPuedo ayudarte con:\n📅 Agendar una cita\n💰 Información de precios\n🕐 Horarios\n⚡ Urgencias\n\n¿Qué necesitas? Si quieres agendar, solo dime "quiero una cita"';
   };
 
   const handleKeyPress = (e) => {
