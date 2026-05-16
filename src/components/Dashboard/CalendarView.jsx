@@ -181,7 +181,7 @@ export default function CalendarView() {
     : [];
 
   return (
-    <div style={{ padding: theme.spacing.lg, maxWidth: '1200px', margin: '0 auto', height: '100%', overflow: 'auto' }}>
+    <div className="calendar-view" style={{ padding: 'clamp(0.625rem, 2.5vw, 1rem)', maxWidth: '1200px', margin: '0 auto', height: '100%', overflow: 'auto' }}>
       {/* Header con estadísticas */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -268,17 +268,17 @@ export default function CalendarView() {
                 </div>
               ))}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: theme.spacing.xs }}>
+            <div className="calendar-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: theme.spacing.xs }}>
               {calendarDays.map((day, index) => {
                 // Celda vacía para alinear el calendario
                 if (day === null) {
                   return (
                     <div
                       key={`empty-${index}`}
+                      className="calendar-day"
                       style={{
                         padding: theme.spacing.sm,
                         borderRadius: theme.borderRadius.md,
-                        minHeight: '90px',
                         opacity: 0.15,
                         background: theme.colors.background
                       }}
@@ -295,15 +295,16 @@ export default function CalendarView() {
                 return (
                   <motion.button
                     key={format(day, 'yyyy-MM-dd')}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
+                    className="calendar-day"
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.96 }}
                     onClick={() => { setSelectedDay(day); setShowDayDetail(true); }}
                     style={{
                       padding: theme.spacing.sm, borderRadius: theme.borderRadius.md,
                       background: isSelected ? theme.colors.primary : isCurrentDay ? `${theme.colors.primary}15` : theme.colors.background,
                       border: isCurrentDay ? `2px solid ${theme.colors.primary}` : `1px solid ${isSelected ? theme.colors.primary : theme.colors.border}`,
                       cursor: 'pointer', opacity: day.getDay() === 0 ? 0.5 : 1,
-                      minHeight: '90px', textAlign: 'left', position: 'relative'
+                      textAlign: 'left', position: 'relative'
                     }}
                   >
                     <div style={{ color: isSelected ? 'white' : theme.colors.text, fontWeight: isCurrentDay ? 700 : 400, fontSize: theme.typography.sizes.base, marginBottom: theme.spacing.xs }}>
