@@ -16,6 +16,7 @@ import {
   DOCTORS 
 } from '../../services/exportService';
 import CalendarSync from '../Calendar/CalendarSync';
+import Tooltip from '../Onboarding/Tooltip';
 
 // Servicios con colores y tiempos (paleta profesional, sin morados ni neón)
 const SERVICES = {
@@ -196,15 +197,21 @@ export default function CalendarView() {
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: theme.spacing.lg }}>
           <div>
-            <h2 style={{ color: theme.colors.text, margin: 0, fontSize: theme.typography.sizes['2xl'], fontWeight: 600, letterSpacing: '-0.015em' }}>
+            <h2 style={{ color: theme.colors.text, margin: 0, fontSize: theme.typography.sizes['2xl'], fontWeight: 600, letterSpacing: '-0.015em', display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
               Agenda clínica
+              <Tooltip
+                id="calendar-overview"
+                title="Vista general"
+                text="Selecciona un día del calendario para ver detalles, exportar a PDF o WhatsApp, y asignar doctor a cada cita."
+                placement="bottom"
+              />
             </h2>
             <p style={{ color: theme.colors.textSecondary, margin: '4px 0 0', fontSize: theme.typography.sizes.sm }}>
               Dr. Alejandro Martínez · Planificación y disponibilidad
             </p>
           </div>
 
-          <div style={{ display: 'flex', gap: theme.spacing.md, flexWrap: 'wrap' }}>
+          <div data-tour="calendar-stats" style={{ display: 'flex', gap: theme.spacing.md, flexWrap: 'wrap' }}>
             <StatCard iconType="calendar" label="Citas hoy" value={getAppointmentsForDay(new Date()).length} subtitle="programadas" color={theme.colors.primary} theme={theme} />
             <StatCard iconType="week" label="Esta semana" value={appointments.filter(apt => {
               const aptDate = new Date(apt.date), today = new Date();

@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { useTheme } from '../../contexts/ThemeContext';
+import HelpButton from '../Onboarding/HelpButton';
 
 function LogoMark({ color }) {
   return (
@@ -83,7 +84,7 @@ export default function Header({ view, onViewChange }) {
         zIndex: 1000,
       }}
     >
-      <div className="app-header__brand" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0, flex: '1 1 auto' }}>
+      <div data-tour="header-brand" className="app-header__brand" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0, flex: '1 1 auto' }}>
         <div
           className="app-header__logo"
           style={{
@@ -146,15 +147,17 @@ export default function Header({ view, onViewChange }) {
             borderRadius: theme.borderRadius.md,
           }}
         >
-          <button onClick={() => onViewChange('chat')} style={navButton(view === 'chat')} aria-label="Conversación">
+          <button data-tour="nav-chat" onClick={() => onViewChange('chat')} style={navButton(view === 'chat')} aria-label="Conversación">
             <ChatIcon color={view === 'chat' ? '#FFFFFF' : theme.colors.textSecondary} />
             <span className="app-header__tab-label">Chat</span>
           </button>
-          <button onClick={() => onViewChange('calendar')} style={navButton(view === 'calendar')} aria-label="Agenda">
+          <button data-tour="nav-calendar" onClick={() => onViewChange('calendar')} style={navButton(view === 'calendar')} aria-label="Agenda">
             <CalendarIcon color={view === 'calendar' ? '#FFFFFF' : theme.colors.textSecondary} />
             <span className="app-header__tab-label">Agenda</span>
           </button>
         </div>
+
+        <HelpButton />
 
         <motion.button
           whileHover={{ scale: 1.05 }}
