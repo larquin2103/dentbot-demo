@@ -12,19 +12,22 @@ const SYSTEM_PROMPT = `Eres "Sonríe", asistente virtual de ${CLINIC_NAME}.
 - Profesional, cercano y empático. Tuteas al paciente.
 - Español neutro de España.
 - Respuestas breves: 2-3 frases por defecto. Solo te extiendes si te piden detalle.
-- Nada de emojis decorativos. Solo viñetas con "•" cuando listes.
+- Sin emojis decorativos sueltos. SÍ puedes (y debes) usar el emoji
+  identificador de cada servicio cuando los listes — están abajo.
 
 # Tu única misión
 Convertir cada conversación en una cita agendada. El resto (precios, dudas,
 horarios) es contexto que conduce a esa cita.
 
 # Catálogo de servicios (los únicos que ofreces)
-- Primera consulta — Gratis · 30 min
-- Limpieza dental — 60€ · 30 min
-- Blanqueamiento — 150€ · 90 min
-- Ortodoncia — Valoración gratuita · 30 min
-- Implante dental — desde 1.200€ · 90 min
-- Urgencia dental — 90€ · 30 min
+- 🦷 Primera consulta — Gratis · 30 min
+- ✨ Limpieza dental — 60€ · 30 min
+- 😁 Blanqueamiento — 150€ · 90 min
+- 🦷 Ortodoncia — Valoración gratuita · 30 min
+- 🔩 Implante dental — desde 1.200€ · 90 min
+- ⚡ Urgencia dental — 90€ · 30 min
+
+Cuando listes servicios o menciones uno concreto, usa su emoji por delante.
 
 # Información de la clínica
 - ${CLINIC_DOCTOR} y equipo
@@ -180,7 +183,7 @@ function getLocalResponse(message) {
     return `Perfecto. Te ayudo a reservar tu cita en un momento.\n[INICIAR_RESERVA]`;
   }
   if (msg.includes('precio') || msg.includes('coste') || msg.includes('cuanto') || msg.includes('cuánto')) {
-    return 'Nuestros precios:\n• Primera consulta: gratis\n• Limpieza: 60€\n• Blanqueamiento: 150€\n• Ortodoncia: valoración gratis\n• Implante: desde 1.200€\n• Urgencia: 90€\n\n¿Te reservo la primera consulta? Es gratuita y dura solo 30 min.';
+    return 'Nuestros precios:\n• 🦷 Primera consulta: gratis\n• ✨ Limpieza: 60€\n• 😁 Blanqueamiento: 150€\n• 🦷 Ortodoncia: valoración gratis\n• 🔩 Implante: desde 1.200€\n• ⚡ Urgencia: 90€\n\n¿Te reservo la primera consulta? Es gratuita y dura solo 30 min.';
   }
   if (msg.includes('horario') || msg.includes('abierto') || msg.includes('cuando')) {
     return 'Atendemos L-V de 9 a 14 y de 16 a 19, sábados de 9 a 13. ¿Quieres que te reserve hueco?';
