@@ -1,34 +1,21 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { format } from 'date-fns';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useChat } from '../../contexts/ChatContext';
 import MessageBubble from './MessageBubble';
 import TypingIndicator from './TypingIndicator';
 import QuickResponses from './QuickResponses';
 import RatingSystem from '../UI/RatingSystem';
+import BookingWidget from './BookingWidgets';
 import { sendMessageToSonrieBot, generateReengagementMessage } from '../../services/openrouter';
 import { useInactivityWatcher } from '../../hooks/useInactivityWatcher';
-
-const SERVICE_PROMPT_TEXT = `Perfecto, te abro el formulario. ¿Qué servicio quieres reservar?
-
-1. Primera consulta — Gratis
-2. Limpieza dental — 60€
-3. Blanqueamiento — 150€
-4. Ortodoncia — Valoración gratuita
-5. Implante dental — desde 1.200€
-6. Urgencia dental — 90€
-
-Escribe el número o el nombre.`;
-
-// Servicios disponibles
-const SERVICES = [
-  { id: 'consulta', name: 'Primera consulta', price: 'Gratis', duration: '30 min', emoji: '🦷' },
-  { id: 'limpieza', name: 'Limpieza dental', price: '60€', duration: '30 min', emoji: '✨' },
-  { id: 'blanqueamiento', name: 'Blanqueamiento', price: '150€', duration: '90 min', emoji: '😁' },
-  { id: 'ortodoncia', name: 'Ortodoncia', price: 'Valoración gratis', duration: '30 min', emoji: '🦷' },
-  { id: 'implante', name: 'Implante dental', price: '1.200€', duration: '90 min', emoji: '🔩' },
-  { id: 'urgencia', name: 'Urgencia dental', price: '90€', duration: '30 min', emoji: '⚡' }
-];
+import {
+  BOOKABLE_SERVICES as SERVICES,
+  dayNameToNextDate,
+  parseRelativeDay,
+  formatLongDate
+} from '../../services/scheduling';
 
 const BOOKING_TRIGGER = '[INICIAR_RESERVA]';
 
@@ -107,19 +94,18 @@ export default function ChatInterface() {
     const svcName = data?.service?.name;
 
     const stepPrompts = {
-      1: 'Habíamos empezado una reserva. ¿Qué servicio te interesa?\n\n' + SERVICE_PROMPT_TEXT.split('\n\n').slice(1).join('\n\n'),
-      2: `Retomamos tu reserva${svcName ? ` de ${svcName}` : ''}. ¿Para qué fecha la quieres?`,
-      3: `Seguimos con tu reserva${svcName ? ` de ${svcName}` : ''}. ¿A qué hora prefieres?`,
-      4: 'Casi terminamos. ¿Cuál es tu nombre completo?',
-      5: 'Última recta. ¿Cuál es tu correo electrónico?',
-      6: 'Y por último, ¿tu número de teléfono?'
+      1: { content: 'Tenías una reserva a medias. Elige el servicio:',                       widget: { type: 'service-picker' } },
+      2: { content: `Retomamos tu reserva${svcName ? ` de ${svcName}` : ''}. ¿Qué día prefieres?`, widget: { type: 'date-picker' } },
+      3: { content: `Seguimos con tu reserva${svcName ? ` de ${svcName}` : ''}. Elige hora:`,      widget: { type: 'time-picker', date: data?.date } },
+      4: { content: 'Casi terminamos. ¿Cuál es tu nombre completo?' },
+      5: { content: 'Última recta. ¿Cuál es tu correo electrónico?' },
+      6: { content: 'Y por último, ¿tu número de teléfono?' }
     };
 
+    const prompt = stepPrompts[step] || { content: 'Continuemos con tu reserva.' };
+
     setTimeout(() => {
-      addMessage({
-        role: 'assistant',
-        content: stepPrompts[step] || 'Continuemos con tu reserva.'
-      });
+      addMessage({ role: 'assistant', ...prompt });
     }, 500);
   }, [state.bookingFlow, addMessage]);
 
@@ -144,104 +130,107 @@ export default function ChatInterface() {
         if (service) {
           dispatch({ type: 'UPDATE_BOOKING_DATA', payload: { service } });
           dispatch({ type: 'NEXT_BOOKING_STEP' });
-          addMessage({ 
-            role: 'assistant', 
-            content: `✅ Has seleccionado: ${service.emoji} ${service.name}\n\nAhora necesito saber:\n📅 ¿Qué fecha prefieres?\n(Ejemplo: 15 de marzo, o dime un día de la semana)`
+          addMessage({
+            role: 'assistant',
+            content: `Has elegido ${service.emoji} ${service.name}. ¿Qué día prefieres venir?`,
+            widget: { type: 'date-picker' }
           });
         } else {
-          addMessage({ 
-            role: 'assistant', 
-            content: `Por favor, selecciona uno de nuestros servicios:\n\n1️⃣ ${SERVICES[0].emoji} Primera consulta - ${SERVICES[0].price}\n2️⃣ ${SERVICES[1].emoji} Limpieza dental - ${SERVICES[1].price}\n3️⃣ ${SERVICES[2].emoji} Blanqueamiento - ${SERVICES[2].price}\n4️⃣ ${SERVICES[3].emoji} Ortodoncia - ${SERVICES[3].price}\n5️⃣ ${SERVICES[4].emoji} Implante - ${SERVICES[4].price}\n6️⃣ ${SERVICES[5].emoji} Urgencia - ${SERVICES[5].price}\n\nPuedes escribir el número o el nombre del servicio.`
+          addMessage({
+            role: 'assistant',
+            content: 'Toca el servicio que necesitas:',
+            widget: { type: 'service-picker' }
           });
         }
         break;
 
-      case 2: // Fecha
-        // Aceptar varios formatos de fecha
-        const datePatterns = [
-          /(\d{1,2})\s*(?:de\s*)?(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)/i,
-          /(\d{4})-(\d{2})-(\d{2})/,
-          /mañana/i,
-          /pasado mañana/i,
-          /lunes|martes|miércoles|jueves|viernes|sábado/i
-        ];
-        
-        const hasDate = datePatterns.some(pattern => pattern.test(input));
-        
-        if (hasDate || input.length > 3) {
-          // Convertir la entrada a una fecha
-          let dateStr = input;
-          const months = {
-            'enero': '01', 'febrero': '02', 'marzo': '03', 'abril': '04',
-            'mayo': '05', 'junio': '06', 'julio': '07', 'agosto': '08',
-            'septiembre': '09', 'octubre': '10', 'noviembre': '11', 'diciembre': '12'
-          };
-          
-          const match = input.match(/(\d{1,2})\s*(?:de\s*)?(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)/i);
-          if (match) {
-            const day = match[1].padStart(2, '0');
-            const month = months[match[2].toLowerCase()];
-            const year = new Date().getFullYear();
-            dateStr = `${year}-${month}-${day}`;
-          } else if (input.toLowerCase().includes('mañana')) {
-            const tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            dateStr = tomorrow.toISOString().split('T')[0];
-          }
+      case 2: { // Fecha
+        const months = {
+          enero: '01', febrero: '02', marzo: '03', abril: '04',
+          mayo: '05', junio: '06', julio: '07', agosto: '08',
+          septiembre: '09', octubre: '10', noviembre: '11', diciembre: '12'
+        };
 
+        let parsedDate = null;
+
+        const isoMatch = input.match(/(\d{4})-(\d{2})-(\d{2})/);
+        const monthMatch = input.match(/(\d{1,2})\s*(?:de\s*)?(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)/i);
+
+        if (isoMatch) {
+          parsedDate = new Date(`${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}T00:00:00`);
+        } else if (monthMatch) {
+          const day = monthMatch[1].padStart(2, '0');
+          const month = months[monthMatch[2].toLowerCase()];
+          const year = new Date().getFullYear();
+          parsedDate = new Date(`${year}-${month}-${day}T00:00:00`);
+        } else {
+          parsedDate = parseRelativeDay(input) || dayNameToNextDate(input);
+        }
+
+        if (parsedDate && !isNaN(parsedDate.getTime())) {
+          if (parsedDate.getDay() === 0) {
+            addMessage({
+              role: 'assistant',
+              content: 'Los domingos no abrimos. Toca otro día, por favor:',
+              widget: { type: 'date-picker' }
+            });
+            break;
+          }
+          const dateStr = format(parsedDate, 'yyyy-MM-dd');
           dispatch({ type: 'UPDATE_BOOKING_DATA', payload: { date: dateStr } });
           dispatch({ type: 'NEXT_BOOKING_STEP' });
-          addMessage({ 
-            role: 'assistant', 
-            content: `📅 Fecha registrada: ${dateStr}\n\nAhora dime:\n🕐 ¿Qué horario prefieres?\n\nDisponible:\n🌅 Mañana: 9:00 - 14:00\n🌆 Tarde: 16:00 - 19:00\n\nPuedes decirme la hora exacta (ejemplo: "10:30")`
+          addMessage({
+            role: 'assistant',
+            content: `Día apuntado: ${formatLongDate(parsedDate)}. ¿A qué hora te viene bien?`,
+            widget: { type: 'time-picker', date: dateStr }
           });
         } else {
-          addMessage({ 
-            role: 'assistant', 
-            content: '📅 ¿Para qué fecha quieres la cita?\n\nPuedes decirme:\n• Una fecha específica (ejemplo: "15 de marzo")\n• Un día de la semana\n• "Mañana" o "pasado mañana"\n\nO escríbela en formato DD/MM'
+          addMessage({
+            role: 'assistant',
+            content: 'Toca el día que prefieras:',
+            widget: { type: 'date-picker' }
           });
         }
         break;
+      }
 
-      case 3: // Hora
+      case 3: { // Hora
         const timeMatch = input.match(/(\d{1,2}):?(\d{2})?/);
         if (timeMatch) {
-          let hours = parseInt(timeMatch[1]);
+          let hours = parseInt(timeMatch[1], 10);
           const minutes = timeMatch[2] || '00';
-          
-          // Ajustar formato
           if (input.toLowerCase().includes('tarde') || hours < 9) {
             hours += 12;
           }
-          
-          const timeStr = `${hours.toString().padStart(2, '0')}:${minutes}`;
-          
+          const timeStr = `${String(hours).padStart(2, '0')}:${minutes}`;
           dispatch({ type: 'UPDATE_BOOKING_DATA', payload: { time: timeStr } });
           dispatch({ type: 'NEXT_BOOKING_STEP' });
-          addMessage({ 
-            role: 'assistant', 
-            content: `🕐 Hora registrada: ${timeStr}\n\n¡Ya casi terminamos! Solo necesito tus datos:\n\n📝 ¿Cuál es tu nombre completo?`
+          addMessage({
+            role: 'assistant',
+            content: `Hora ${timeStr} reservada. ¿Cuál es tu nombre completo?`
           });
         } else {
-          addMessage({ 
-            role: 'assistant', 
-            content: '🕐 ¿A qué hora prefieres?\n\nHorarios disponibles cada 30 minutos:\n• Mañana: 9:00, 9:30, 10:00... hasta 13:30\n• Tarde: 16:00, 16:30, 17:00... hasta 18:30\n\nEjemplo: "10:30 de la mañana"'
+          addMessage({
+            role: 'assistant',
+            content: 'Toca el hueco que prefieras:',
+            widget: { type: 'time-picker', date: state.bookingFlow.data.date }
           });
         }
         break;
+      }
 
       case 4: // Nombre
         if (input.length >= 3) {
           dispatch({ type: 'UPDATE_BOOKING_DATA', payload: { name: input } });
           dispatch({ type: 'NEXT_BOOKING_STEP' });
-          addMessage({ 
-            role: 'assistant', 
-            content: `✅ Nombre registrado: ${input}\n\n📧 ¿Cuál es tu correo electrónico?\n(Te enviaremos la confirmación de la cita)`
+          addMessage({
+            role: 'assistant',
+            content: `Gracias ${input}. ¿Cuál es tu correo electrónico? Te enviaremos la confirmación.`
           });
         } else {
-          addMessage({ 
-            role: 'assistant', 
-            content: '📝 Por favor, dime tu nombre completo (nombre y apellido)'
+          addMessage({
+            role: 'assistant',
+            content: 'Necesito tu nombre completo (nombre y apellido).'
           });
         }
         break;
@@ -250,14 +239,14 @@ export default function ChatInterface() {
         if (input.includes('@') && input.includes('.')) {
           dispatch({ type: 'UPDATE_BOOKING_DATA', payload: { email: input } });
           dispatch({ type: 'NEXT_BOOKING_STEP' });
-          addMessage({ 
-            role: 'assistant', 
-            content: `📧 Email registrado: ${input}\n\n📱 Por último, ¿tu número de teléfono?\n(Por si necesitamos contactarte)`
+          addMessage({
+            role: 'assistant',
+            content: 'Perfecto. Por último, ¿tu teléfono? Es por si tenemos que avisarte de algún cambio.'
           });
         } else {
-          addMessage({ 
-            role: 'assistant', 
-            content: '📧 Por favor, ingresa un email válido (ejemplo: nombre@email.com)'
+          addMessage({
+            role: 'assistant',
+            content: 'Ese correo no parece válido. Inténtalo de nuevo (ej: nombre@email.com).'
           });
         }
         break;
@@ -274,9 +263,9 @@ export default function ChatInterface() {
     saveAppointmentToCalendar(bookingData);
     
     dispatch({ type: 'COMPLETE_BOOKING' });
-    addMessage({ 
-      role: 'assistant', 
-      content: `🎉 ¡CITA CONFIRMADA!\n\n📋 Resumen de tu cita:\n━━━━━━━━━━━━━━━\n🦷 Servicio: ${bookingData.service.emoji} ${bookingData.service.name}\n📅 Fecha: ${bookingData.date}\n🕐 Hora: ${bookingData.time}\n👤 Paciente: ${bookingData.name}\n📧 Email: ${bookingData.email}\n📱 Tel: ${bookingData.phone}\n💰 Precio: ${bookingData.service.price}\n━━━━━━━━━━━━━━━\n\n✅ Te hemos enviado un email de confirmación\n📱 Recibirás un recordatorio 24h antes\n\n📍 Clínica Dental Sonrisa Perfecta\nAv. Principal 123\n📞 +34 900 123 456\n\n¿Necesitas algo más? 😊`
+    addMessage({
+      role: 'assistant',
+      content: `✅ Cita confirmada\n\nResumen:\n• ${bookingData.service.emoji} ${bookingData.service.name}\n• 📅 ${formatLongDate(bookingData.date)}\n• 🕐 ${bookingData.time}\n• 👤 ${bookingData.name}\n• 📧 ${bookingData.email}\n• 📱 ${bookingData.phone}\n• 💰 ${bookingData.service.price}\n\nTe hemos enviado la confirmación por email y recibirás un recordatorio 24h antes. Si necesitas cancelar, hazlo con al menos 24h de antelación.\n\n¿Algo más en lo que pueda ayudarte?`
     });
   } else {
     addMessage({ 
@@ -351,8 +340,48 @@ export default function ChatInterface() {
     }
     dispatch({ type: 'START_BOOKING_FLOW' });
     setTimeout(() => {
-      addMessage({ role: 'assistant', content: SERVICE_PROMPT_TEXT });
-    }, 600);
+      addMessage({
+        role: 'assistant',
+        content: 'Elige el servicio que necesitas:',
+        widget: { type: 'service-picker' }
+      });
+    }, 500);
+  }, [addMessage, dispatch]);
+
+  // Handler que reciben los botones del flujo (servicio/fecha/hora)
+  const handleWidgetAction = useCallback((type, payload, displayText) => {
+    addMessage({ role: 'user', content: displayText });
+    dispatch({ type: 'RESET_REENGAGEMENT' });
+    resetIdleRef.current?.();
+    dispatch({ type: 'SET_TYPING', payload: true });
+
+    setTimeout(() => {
+      if (type === 'service') {
+        dispatch({ type: 'UPDATE_BOOKING_DATA', payload: { service: payload } });
+        dispatch({ type: 'NEXT_BOOKING_STEP' });
+        addMessage({
+          role: 'assistant',
+          content: `Has elegido ${payload.emoji} ${payload.name}. ¿Qué día prefieres venir?`,
+          widget: { type: 'date-picker' }
+        });
+      } else if (type === 'date') {
+        dispatch({ type: 'UPDATE_BOOKING_DATA', payload: { date: payload } });
+        dispatch({ type: 'NEXT_BOOKING_STEP' });
+        addMessage({
+          role: 'assistant',
+          content: `Día apuntado: ${displayText}. ¿A qué hora te viene bien?`,
+          widget: { type: 'time-picker', date: payload }
+        });
+      } else if (type === 'time') {
+        dispatch({ type: 'UPDATE_BOOKING_DATA', payload: { time: payload } });
+        dispatch({ type: 'NEXT_BOOKING_STEP' });
+        addMessage({
+          role: 'assistant',
+          content: `Hora ${payload} reservada. ¿Cuál es tu nombre completo?`
+        });
+      }
+      dispatch({ type: 'SET_TYPING', payload: false });
+    }, 400);
   }, [addMessage, dispatch]);
 
   const handleSendMessage = async (message = inputMessage) => {
@@ -517,25 +546,31 @@ export default function ChatInterface() {
 
           {/* Messages */}
           <AnimatePresence>
-            {state.messages.map((message) => (
-              <motion.div
-                key={message.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.3 }}
-              >
-                <MessageBubble
-                  role={message.role}
-                  content={message.content}
-                  timestamp={message.timestamp}
-                  theme={theme}
-                />
-                {message.role === 'assistant' && message.messageId && (
-                  <RatingSystem messageId={message.messageId} theme={theme} />
-                )}
-              </motion.div>
-            ))}
+            {state.messages.map((message, idx) => {
+              const isLast = idx === state.messages.length - 1;
+              return (
+                <motion.div
+                  key={message.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <MessageBubble
+                    role={message.role}
+                    content={message.content}
+                    timestamp={message.timestamp}
+                    theme={theme}
+                  />
+                  {message.role === 'assistant' && message.widget && isLast && (
+                    <BookingWidget widget={message.widget} theme={theme} onAction={handleWidgetAction} />
+                  )}
+                  {message.role === 'assistant' && message.messageId && (
+                    <RatingSystem messageId={message.messageId} theme={theme} />
+                  )}
+                </motion.div>
+              );
+            })}
           </AnimatePresence>
 
           <AnimatePresence>
