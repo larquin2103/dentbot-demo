@@ -417,7 +417,7 @@ export default function ChatInterface() {
       </div>
 
       {/* Messages Area */}
-      <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         <div className="chat-messages" style={{
           flex: 1, overflowY: 'auto', padding: 'clamp(0.75rem, 3vw, 1.25rem)',
           display: 'flex', flexDirection: 'column', gap: theme.spacing.md
