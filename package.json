@@ -11,7 +11,9 @@
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "video:studio": "remotion studio remotion/index.js",
     "video:render": "remotion render remotion/index.js SonrieBotPromo out/sonriebot-promo.mp4",
-    "video:render:vertical": "remotion render remotion/index.js SonrieBotPromoVertical out/sonriebot-promo-vertical.mp4"
+    "video:render:vertical": "remotion render remotion/index.js SonrieBotPromoVertical out/sonriebot-promo-vertical.mp4",
+    "image:fb:portrait": "remotion still remotion/index.js FacebookPost45 out/facebook-post-4x5.png",
+    "image:fb:square": "remotion still remotion/index.js FacebookPost11 out/facebook-post-1x1.png"
   },
   "dependencies": {
     "@remotion/bundler": "^4.0.462",
