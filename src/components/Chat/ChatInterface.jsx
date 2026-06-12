@@ -9,6 +9,7 @@ import QuickResponses from './QuickResponses';
 import RatingSystem from '../UI/RatingSystem';
 import BookingWidget from './BookingWidgets';
 import { sendMessageToSonrieBot, generateReengagementMessage } from '../../services/openrouter';
+import { syncToGoogleCalendar } from '../../services/calendarSync';
 import { useInactivityWatcher } from '../../hooks/useInactivityWatcher';
 import {
   BOOKABLE_SERVICES as SERVICES,
@@ -39,13 +40,30 @@ export default function ChatInterface() {
   const hasUserMessage = state.messages.some(m => m.role === 'user');
   const inactivityEnabled = hasUserMessage && !state.bookingFlow.active;
 
+  // Ref al reset del watcher de inactividad (la usa handleSendMessage)
+  const resetIdleRef = useRef(() => {});
+
+  const triggerBookingFlow = useCallback((preMessage) => {
+    if (preMessage) {
+      addMessage({ role: 'assistant', content: preMessage });
+    }
+    dispatch({ type: 'START_BOOKING_FLOW' });
+    setTimeout(() => {
+      addMessage({
+        role: 'assistant',
+        content: 'Elige el servicio que necesitas:',
+        widget: { type: 'service-picker' }
+      });
+    }, 500);
+  }, [addMessage, dispatch]);
+
   const handleSoftIdle = useCallback(async () => {
     if (state.reengagement.softSent) return;
     dispatch({ type: 'MARK_REENGAGEMENT', payload: 'softSent' });
     try {
       const text = await generateReengagementMessage(state.messages, 'soft');
       addMessage({ role: 'assistant', content: text.replace('[INICIAR_RESERVA]', '').trim() });
-    } catch (e) {
+    } catch {
       addMessage({ role: 'assistant', content: '¿Sigues ahí? Si necesitas algo más, te leo.' });
     }
   }, [state.messages, state.reengagement.softSent, addMessage, dispatch]);
@@ -61,13 +79,13 @@ export default function ChatInterface() {
       if (trigger) {
         setTimeout(() => triggerBookingFlow(), 700);
       }
-    } catch (e) {
+    } catch {
       addMessage({
         role: 'assistant',
         content: 'Antes de irte: la primera consulta es gratuita y dura 30 min. ¿Te reservo hueco esta semana?'
       });
     }
-  }, [state.messages, state.reengagement.hardSent, addMessage, dispatch]);
+  }, [state.messages, state.reengagement.hardSent, addMessage, dispatch, triggerBookingFlow]);
 
   const { reset: resetIdle } = useInactivityWatcher({
     enabled: inactivityEnabled,
@@ -111,12 +129,12 @@ export default function ChatInterface() {
 
   // Manejar el flujo de agendamiento
   const handleBookingFlow = async (userInput) => {
-    const { step, data } = state.bookingFlow;
+    const { step } = state.bookingFlow;
     const input = userInput.trim();
 
     switch (step) {
-      case 1: // Seleccionar servicio
-        const service = SERVICES.find(s => 
+      case 1: { // Seleccionar servicio
+        const service = SERVICES.find(s =>
           s.name.toLowerCase().includes(input.toLowerCase()) ||
           s.id === input.toLowerCase() ||
           (input.includes('1') && s.id === 'consulta') ||
@@ -143,6 +161,7 @@ export default function ChatInterface() {
           });
         }
         break;
+      }
 
       case 2: { // Fecha
         const months = {
@@ -252,28 +271,26 @@ export default function ChatInterface() {
         break;
 
       case 6: // Teléfono y confirmación
-  if (input.length >= 7) {
-    dispatch({ type: 'UPDATE_BOOKING_DATA', payload: { phone: input } });
-    
-    // Guardar la cita en el calendario (sin await)
-    const bookingData = { ...state.bookingFlow.data, phone: input };
-    console.log('📋 Datos completos de la cita:', bookingData);
-    
-    // Guardar (no necesita await porque no esperamos respuesta)
-    saveAppointmentToCalendar(bookingData);
-    
-    dispatch({ type: 'COMPLETE_BOOKING' });
-    addMessage({
-      role: 'assistant',
-      content: `✅ Cita confirmada\n\nResumen:\n• ${bookingData.service.emoji} ${bookingData.service.name}\n• 📅 ${formatLongDate(bookingData.date)}\n• 🕐 ${bookingData.time}\n• 👤 ${bookingData.name}\n• 📧 ${bookingData.email}\n• 📱 ${bookingData.phone}\n• 💰 ${bookingData.service.price}\n\nTe hemos enviado la confirmación por email y recibirás un recordatorio 24h antes. Si necesitas cancelar, hazlo con al menos 24h de antelación.\n\n¿Algo más en lo que pueda ayudarte?`
-    });
-  } else {
-    addMessage({ 
-      role: 'assistant', 
-      content: '📱 Por favor, ingresa un número de teléfono válido (mínimo 7 dígitos)'
-    });
-  }
-  break;
+        if (input.length >= 7) {
+          dispatch({ type: 'UPDATE_BOOKING_DATA', payload: { phone: input } });
+
+          const bookingData = { ...state.bookingFlow.data, phone: input };
+
+          // Guardar (no necesita await porque no esperamos respuesta)
+          saveAppointmentToCalendar(bookingData);
+
+          dispatch({ type: 'COMPLETE_BOOKING' });
+          addMessage({
+            role: 'assistant',
+            content: `✅ Cita confirmada\n\nResumen:\n• ${bookingData.service.emoji} ${bookingData.service.name}\n• 📅 ${formatLongDate(bookingData.date)}\n• 🕐 ${bookingData.time}\n• 👤 ${bookingData.name}\n• 📧 ${bookingData.email}\n• 📱 ${bookingData.phone}\n• 💰 ${bookingData.service.price}\n\nTe hemos enviado la confirmación por email y recibirás un recordatorio 24h antes. Si necesitas cancelar, hazlo con al menos 24h de antelación.\n\n¿Algo más en lo que pueda ayudarte?`
+          });
+        } else {
+          addMessage({
+            role: 'assistant',
+            content: '📱 Por favor, ingresa un número de teléfono válido (mínimo 7 dígitos)'
+          });
+        }
+        break;
     }
   };
 
@@ -304,12 +321,9 @@ export default function ChatInterface() {
   // Sincronizar con Google Calendar si está conectado
   const googleToken = localStorage.getItem('googleCalendarToken');
   if (googleToken) {
-    console.log('🔄 Detectado token de Google, sincronizando...');
     try {
-      const { syncToGoogleCalendar } = await import('../../services/calendarSync');
       const eventId = await syncToGoogleCalendar(newAppointment);
       if (eventId) {
-        console.log('✅ Cita sincronizada con Google Calendar:', eventId);
         // Actualizar la cita local con el ID de Google
         const updatedAppointments = JSON.parse(localStorage.getItem('sonriebot-appointments') || '[]');
         const finalUpdated = updatedAppointments.map(apt => {
@@ -320,33 +334,12 @@ export default function ChatInterface() {
         });
         localStorage.setItem('sonriebot-appointments', JSON.stringify(finalUpdated));
         window.dispatchEvent(new Event('storage'));
-      } else {
-        console.log('⚠️ No se pudo crear el evento en Google Calendar');
       }
     } catch (error) {
-      console.log('⚠️ Error al sincronizar con Google:', error.message);
+      console.warn('No se pudo sincronizar con Google Calendar:', error.message);
     }
-  } else {
-    console.log('ℹ️ Google Calendar no conectado. Cita guardada solo localmente.');
   }
 };
-
-  // Reiniciar el watcher de inactividad cuando el usuario escribe
-  const resetIdleRef = useRef(() => {});
-
-  const triggerBookingFlow = useCallback((preMessage) => {
-    if (preMessage) {
-      addMessage({ role: 'assistant', content: preMessage });
-    }
-    dispatch({ type: 'START_BOOKING_FLOW' });
-    setTimeout(() => {
-      addMessage({
-        role: 'assistant',
-        content: 'Elige el servicio que necesitas:',
-        widget: { type: 'service-picker' }
-      });
-    }, 500);
-  }, [addMessage, dispatch]);
 
   // Handler que reciben los botones del flujo (servicio/fecha/hora)
   const handleWidgetAction = useCallback((type, payload, displayText) => {

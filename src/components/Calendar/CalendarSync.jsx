@@ -5,15 +5,13 @@ import {
   initGoogleAPI, 
   authenticateGoogle, 
   fullSync,
-  downloadICalFile,
-  generateICalFile
+  downloadICalFile
 } from '../../services/calendarSync';
 
-export default function CalendarSync({ 
-  day, 
-  appointments, 
-  stats, 
-  onSyncComplete 
+export default function CalendarSync({
+  day,
+  appointments,
+  onSyncComplete
 }) {
   const { theme } = useTheme();
   const [isGoogleConnected, setIsGoogleConnected] = useState(false);

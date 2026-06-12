@@ -10,16 +10,18 @@
 
 ---
 
-## ⚡ **Demo Funcional Inmediato**
+## ⚡ **Cómo funciona el chat con IA**
 
-El demo **ya incluye una API key de OpenRouter preconfigurada** para que funcione desde el primer momento:
+Las llamadas al modelo **no se hacen desde el navegador**. El cliente envía el
+mensaje a una **Netlify Function** (`netlify/functions/chat.js`) que guarda la
+API key en el servidor y habla con OpenRouter. Así la clave **nunca viaja en el
+bundle del cliente**.
 
-- ✅ **4 modelos gratuitos disponibles** sin necesidad de configuración
-- ✅ Chat funcional con IA especializada en clínicas dentales
-- ✅ Respuestas profesionales en español
-- ✅ Los usuarios pueden usar la key incluida o poner la suya propia
+- ✅ Cascada de 3 modelos con _fallback_ automático (Claude Haiku → GPT-4o-mini → Llama 3.1 70B)
+- ✅ Si la función o todos los modelos fallan, hay respuestas locales de respaldo
+- ✅ La API key vive solo en la variable de entorno `OPENROUTER_API_KEY` (server-side)
 
-**Para producción:** Cada cliente debería obtener su propia API key gratis en [openrouter.ai/keys](https://openrouter.ai/keys)
+> Obtén una API key gratis (sin tarjeta) en [openrouter.ai/keys](https://openrouter.ai/keys).
 
 ---
 
@@ -63,9 +65,17 @@ El demo **ya incluye una API key de OpenRouter preconfigurada** para que funcion
 3. Conecta tu cuenta de GitHub
 4. Selecciona el repositorio `larquin2103/dentbot-demo`
 5. Netlify detectará automáticamente la configuración (`netlify.toml`)
-6. Click en **"Deploy site"**
+6. En **Site settings → Environment variables** añade:
+   - `OPENROUTER_API_KEY` → tu key de OpenRouter (**secreto, sin prefijo `VITE_`**)
+   - Opcionales: `VITE_CLINIC_NAME`, `VITE_CLINIC_ADDRESS`, `VITE_CLINIC_PHONE`,
+     `VITE_CLINIC_EMAIL`, `VITE_CLINIC_DOCTOR`, `VITE_GOOGLE_CLIENT_ID`, `VITE_GOOGLE_API_KEY`
+7. Click en **"Deploy site"**
 
 ✅ ¡Listo! Tu demo estará en vivo en `https://tu-sitio.netlify.app`
+
+> **Desarrollo local del chat con IA:** usa `netlify dev` (no `npm run dev`) para
+> que la Netlify Function esté disponible en local. Con `npm run dev` el chat
+> seguirá funcionando con las respuestas locales de respaldo.
 
 ### Opción B: Deploy Manual con CLI
 
@@ -85,12 +95,13 @@ netlify deploy --prod
 
 ## 🎯 Cómo Usar el Demo con Clientes
 
-### **Paso 1: Configurar API Key Gratis**
+### **Paso 1: Configurar la API Key (una sola vez)**
 
-1. El cliente va a la pestaña **"Agente IA"**
-2. En "Configuración del Agente" selecciona un modelo gratuito (ej: Llama 3.3)
-3. Obtiene su API Key gratis en [openrouter.ai/keys](https://openrouter.ai/keys)
-4. Pega la key y click en "OK"
+La key se configura en el servidor, no en la UI:
+
+1. Obtén una API Key gratis en [openrouter.ai/keys](https://openrouter.ai/keys)
+2. En Netlify → **Site settings → Environment variables**, añade `OPENROUTER_API_KEY`
+3. Vuelve a desplegar. El chat queda operativo para todos los visitantes
 
 ### **Paso 2: Demo Interactivo**
 
@@ -113,9 +124,10 @@ Ir a la pestaña **"Flujos n8n"** para explicar:
 
 | Capa | Tecnología | Propósito |
 |------|-----------|-----------|
-| Frontend | React 19 + Vite | UI rápida y moderna |
+| Frontend | React 18 + Vite | UI rápida y moderna |
 | Estilos | Inline styles (Design Tokens) | "Clinical Luxury" aesthetic |
-| IA | OpenRouter API | Acceso a múltiples modelos LLM |
+| Backend ligero | Netlify Functions | Proxy seguro al LLM (oculta la API key) |
+| IA | OpenRouter API | Acceso a múltiples modelos LLM con fallback |
 | Backend (producción) | n8n + Railway | Orquestación de flujos |
 | DB (producción) | Supabase | Historial de conversaciones |
 | WhatsApp | Evolution API | Conexión con WhatsApp Business |
@@ -159,11 +171,16 @@ El sistema incluye precios de referencia para CDMX:
 
 ## 🔐 Seguridad y Buenas Prácticas
 
-- ✅ API Keys se almacenan solo en el navegador del usuario
-- ✅ No hay backend propio (todo corre en el cliente)
-- ✅ OpenRouter permite modelos gratis sin tarjeta de crédito
-- ✅ Headers de seguridad configurados en `netlify.toml`
-- ✅ Build optimizado con Vite (69 KB gzipped)
+- ✅ La API key de OpenRouter vive **solo en el servidor** (Netlify Function), nunca en el bundle del cliente
+- ✅ Variables públicas (`VITE_*`) separadas de los secretos (sin prefijo) — ver `.env.example`
+- ✅ `console.*` y `debugger` se eliminan del build de producción (`vite.config.js`)
+- ✅ Headers de seguridad configurados en `netlify.toml` (X-Frame-Options, nosniff, Referrer-Policy)
+- ✅ ESLint 9 (flat config) en verde, 0 warnings (`npm run lint`)
+- ✅ Sin secretos commiteados (`.env*` ignorados; solo se versiona `.env.example`)
+
+> Nota: la sincronización con Google Calendar usa OAuth de cliente y guarda el
+> token en `localStorage`. Suficiente para el demo; para producción a gran escala
+> conviene mover ese flujo a un backend.
 
 ---
 
