@@ -69,6 +69,8 @@ bundle del cliente**.
    - `OPENROUTER_API_KEY` → tu key de OpenRouter (**secreto, sin prefijo `VITE_`**)
    - Opcionales: `VITE_CLINIC_NAME`, `VITE_CLINIC_ADDRESS`, `VITE_CLINIC_PHONE`,
      `VITE_CLINIC_EMAIL`, `VITE_CLINIC_DOCTOR`, `VITE_GOOGLE_CLIENT_ID`, `VITE_GOOGLE_API_KEY`
+   - Moneda (adaptable por clínica): `VITE_CLINIC_CURRENCY` (`€` def., `$`, `MXN`…) y
+     `VITE_CLINIC_CURRENCY_POSITION` (`after` def. / `before`)
 7. Click en **"Deploy site"**
 
 ✅ ¡Listo! Tu demo estará en vivo en `https://tu-sitio.netlify.app`

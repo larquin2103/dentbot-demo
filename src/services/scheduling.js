@@ -1,5 +1,6 @@
 import { addDays, format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { formatPrice } from './currency';
 
 const WORK_HOURS = {
   weekday: { morning: { start: 9, end: 14 }, afternoon: { start: 16, end: 19 } },
@@ -15,12 +16,12 @@ const DAY_NAMES = {
 };
 
 export const BOOKABLE_SERVICES = [
-  { id: 'consulta',       name: 'Primera consulta', price: 'Gratis',           duration: '30 min', emoji: '🦷' },
-  { id: 'limpieza',       name: 'Limpieza dental',  price: '60€',              duration: '30 min', emoji: '✨' },
-  { id: 'blanqueamiento', name: 'Blanqueamiento',   price: '150€',             duration: '90 min', emoji: '😁' },
-  { id: 'ortodoncia',     name: 'Ortodoncia',       price: 'Valoración gratis', duration: '30 min', emoji: '🦷' },
-  { id: 'implante',       name: 'Implante dental',  price: 'Desde 1.200€',     duration: '90 min', emoji: '🔩' },
-  { id: 'urgencia',       name: 'Urgencia dental',  price: '90€',              duration: '30 min', emoji: '⚡' }
+  { id: 'consulta',       name: 'Primera consulta', price: 'Gratis',                   duration: '30 min', emoji: '🦷' },
+  { id: 'limpieza',       name: 'Limpieza dental',  price: formatPrice(60),            duration: '30 min', emoji: '✨' },
+  { id: 'blanqueamiento', name: 'Blanqueamiento',   price: formatPrice(150),           duration: '90 min', emoji: '😁' },
+  { id: 'ortodoncia',     name: 'Ortodoncia',       price: 'Valoración gratis',        duration: '30 min', emoji: '🦷' },
+  { id: 'implante',       name: 'Implante dental',  price: `Desde ${formatPrice(1200)}`, duration: '90 min', emoji: '🔩' },
+  { id: 'urgencia',       name: 'Urgencia dental',  price: formatPrice(90),            duration: '30 min', emoji: '⚡' }
 ];
 
 export function getNextAvailableDates(count = 10) {
