@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import { format, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 // Datos de la clínica desde variables de entorno

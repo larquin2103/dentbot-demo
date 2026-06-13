@@ -5,10 +5,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Comandos principales
 
 ```bash
-npm run dev        # Servidor de desarrollo en http://localhost:3000
+npm run dev        # Servidor de desarrollo en http://localhost:3000 (sin Netlify Functions)
+netlify dev        # Dev con Netlify Functions (necesario para probar el chat IA en local)
 npm run build      # Build de producción → carpeta dist/
 npm run preview    # Preview del build en local
-npm run lint       # ESLint (0 warnings permitidos)
+npm run lint       # ESLint 9 flat config (0 warnings permitidos)
 ```
 
 Deploy a Netlify:
@@ -18,21 +19,24 @@ netlify deploy --prod
 
 ## Variables de entorno
 
-Copia `.env.example` a `.env` y rellena los valores. Las claves con prefijo `VITE_` son expuestas al bundle del cliente. Las variables requeridas son:
+Copia `.env.example` a `.env` y rellena los valores. **Distinción clave:**
 
-| Variable | Propósito |
-|---|---|
-| `VITE_OPENROUTER_API_KEY` | Acceso a LLMs via OpenRouter |
-| `VITE_GOOGLE_CLIENT_ID` | OAuth para Google Calendar |
-| `VITE_GOOGLE_API_KEY` | API de Google Calendar |
-| `VITE_CLINIC_NAME` | Nombre de la clínica (usado en PDF, emails, prompts) |
-| `VITE_CLINIC_ADDRESS`, `VITE_CLINIC_PHONE`, `VITE_CLINIC_EMAIL` | Datos de contacto de la clínica |
+- **Secretos** → sin prefijo. Solo los lee la Netlify Function en el servidor; **nunca** se incluyen en el bundle del cliente.
+- **Públicas** → prefijo `VITE_`. Se exponen en el bundle del cliente. No poner secretos aquí.
 
-> **Atención:** `.env.production` contiene credenciales reales. Nunca exponerlo en commits ni en logs.
+| Variable | Tipo | Propósito |
+|---|---|---|
+| `OPENROUTER_API_KEY` | 🔒 Secreto (servidor) | Acceso a LLMs vía OpenRouter desde `netlify/functions/chat.js` |
+| `VITE_GOOGLE_CLIENT_ID` | Público | OAuth para Google Calendar |
+| `VITE_GOOGLE_API_KEY` | Público | API de Google Calendar |
+| `VITE_CLINIC_NAME` | Público | Nombre de la clínica (UI, PDF, emails, system prompt) |
+| `VITE_CLINIC_ADDRESS`, `VITE_CLINIC_PHONE`, `VITE_CLINIC_EMAIL`, `VITE_CLINIC_DOCTOR` | Público | Datos de contacto de la clínica |
+
+> **Atención:** los archivos `.env*` (salvo `.env.example`) están en `.gitignore`. Nunca commitear credenciales reales ni exponerlas en logs. En Netlify se configuran en *Site settings → Environment variables*.
 
 ## Arquitectura
 
-Es una SPA de React 18 + Vite sin backend propio. Todo el estado se persiste en `localStorage` del navegador.
+Es una SPA de React 18 + Vite. El estado se persiste en `localStorage` del navegador. El único código de servidor es una **Netlify Function** (`netlify/functions/chat.js`) que actúa de proxy hacia OpenRouter para no exponer la API key en el cliente.
 
 ### Vistas
 
@@ -49,7 +53,8 @@ Es una SPA de React 18 + Vite sin backend propio. Todo el estado se persiste en 
 
 ### Servicios
 
-- **`openrouter.js`** — Llama a la API de OpenRouter con fallback entre modelos (claude-3-haiku → gpt-4o-mini → llama-3-70b). Si todos fallan, usa `getLocalResponse()` con respuestas hardcodeadas por palabras clave.
+- **`openrouter.js`** — Cliente delgado: hace `POST` a `/.netlify/functions/chat` (no conoce la API key). La cascada de modelos y el system prompt viven en la función. Si la función falla, usa `getLocalResponse()` con respuestas por palabras clave como respaldo.
+- **`netlify/functions/chat.js`** — Proxy server-side a OpenRouter. Guarda la cascada de modelos (claude-3-haiku → gpt-4o-mini → llama-3.1-70b) y el `SYSTEM_PROMPT`. Lee `OPENROUTER_API_KEY` y los `VITE_CLINIC_*` de `process.env`. Maneja `type: 'chat'` y `type: 'reengagement'`.
 - **`calendarSync.js`** — Autenticación OAuth con Google Identity Services cargado dinámicamente. Crea eventos en Google Calendar y genera archivos iCal para descarga.
 - **`exportService.js`** — Exporta el resumen del día a PDF (jsPDF), genera texto para WhatsApp y contenido HTML para email. Define las constantes `SERVICES` y `DOCTORS` usadas también en `CalendarView`.
 
@@ -59,4 +64,4 @@ No hay CSS modules ni Tailwind. Los estilos se aplican como inline styles tomand
 
 ### Build
 
-Vite divide el bundle en 4 chunks manuales: `vendor` (react + react-dom), `animations` (framer-motion), `calendar` (date-fns), `pdf` (jspdf). No usar `terser` como minificador; el proyecto usa `esbuild`.
+Vite divide el bundle en 4 chunks manuales: `vendor` (react + react-dom), `animations` (framer-motion), `calendar` (date-fns), `pdf` (jspdf). No usar `terser` como minificador; el proyecto usa `esbuild`. El build elimina `console.*` y `debugger` en producción vía `esbuild.drop` (`vite.config.js`); no afecta a `vite dev`.

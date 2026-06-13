@@ -7,6 +7,10 @@ export default defineConfig({
     port: 3000,
     open: true
   },
+  // Elimina console.* y debugger del bundle de producción (no afecta a `vite dev`)
+  esbuild: {
+    drop: ['console', 'debugger']
+  },
   build: {
     outDir: 'dist',
     sourcemap: false,
