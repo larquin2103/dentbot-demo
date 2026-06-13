@@ -20,12 +20,16 @@ export default function TypingIndicator({ theme }) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: '0.75rem',
-          fontWeight: 700,
-          letterSpacing: '0.02em',
+          flexShrink: 0,
         }}
+        aria-hidden="true"
       >
-        SB
+        <svg width="18" height="18" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path
+            d="M10.4 4C7.6 4 5.2 6.1 5.2 9.2c0 2.4.5 4.3 1.2 7.4.7 3.2 1 5.6 1.6 8.6.3 1.7 1.1 2.8 2.4 2.8 1.5 0 2-1.2 2.6-3.2.5-1.8 1-3.6 3-3.6s2.5 1.8 3 3.6c.6 2 1.1 3.2 2.6 3.2 1.3 0 2.1-1.1 2.4-2.8.6-3 .9-5.4 1.6-8.6.7-3.1 1.2-5 1.2-7.4 0-3.1-2.4-5.2-5.2-5.2-2.1 0-3.7.9-5.6.9s-3.5-.9-5.6-.9z"
+            fill="currentColor"
+          />
+        </svg>
       </div>
       <div
         style={{
