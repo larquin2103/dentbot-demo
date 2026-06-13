@@ -17,15 +17,16 @@ import {
 } from '../../services/exportService';
 import CalendarSync from '../Calendar/CalendarSync';
 import Tooltip from '../Onboarding/Tooltip';
+import { formatPrice } from '../../services/currency';
 
 // Servicios con colores y tiempos (paleta profesional, sin morados ni neón)
 const SERVICES = {
   consulta: { name: 'Primera consulta', color: '#0E7490', duration: 30, icon: '🦷', price: 'Gratis' },
-  limpieza: { name: 'Limpieza dental', color: '#0369A1', duration: 30, icon: '✨', price: '60€' },
-  blanqueamiento: { name: 'Blanqueamiento', color: '#0F766E', duration: 90, icon: '😁', price: '150€' },
+  limpieza: { name: 'Limpieza dental', color: '#0369A1', duration: 30, icon: '✨', price: formatPrice(60) },
+  blanqueamiento: { name: 'Blanqueamiento', color: '#0F766E', duration: 90, icon: '😁', price: formatPrice(150) },
   ortodoncia: { name: 'Ortodoncia', color: '#A16207', duration: 30, icon: '🦷', price: 'Consulta gratis' },
-  implante: { name: 'Implante dental', color: '#B91C1C', duration: 90, icon: '🔩', price: '1.200€' },
-  urgencia: { name: 'Urgencia', color: '#C2410C', duration: 30, icon: '⚡', price: '90€' }
+  implante: { name: 'Implante dental', color: '#B91C1C', duration: 90, icon: '🔩', price: formatPrice(1200) },
+  urgencia: { name: 'Urgencia', color: '#C2410C', duration: 30, icon: '⚡', price: formatPrice(90) }
 };
 
 const WORK_HOURS = {
@@ -217,10 +218,10 @@ export default function CalendarView() {
               const aptDate = new Date(apt.date), today = new Date();
               return aptDate >= today && aptDate <= addHours(today, 168);
             }).length} subtitle="citas" color={theme.colors.secondary} theme={theme} />
-            <StatCard iconType="revenue" label="Ingresos mes" value={`${appointments.reduce((sum, apt) => {
+            <StatCard iconType="revenue" label="Ingresos mes" value={formatPrice(appointments.reduce((sum, apt) => {
               const price = SERVICES[apt.service]?.price || '0';
               return sum + (parseInt(price.replace(/[^0-9]/g, '')) || 0);
-            }, 0)}€`} subtitle="estimado" color={theme.colors.accent} theme={theme} />
+            }, 0))} subtitle="estimado" color={theme.colors.accent} theme={theme} />
           </div>
         </div>
       </motion.div>
@@ -496,7 +497,7 @@ function DayDetailPanel({
             <span style={{ color: theme.colors.textSecondary, fontSize: theme.typography.sizes.sm }}>📊 {stats.total} citas</span>
             <span style={{ color: theme.colors.textSecondary, fontSize: theme.typography.sizes.sm }}>⏱️ {Math.floor(stats.totalDuration / 60)}h {stats.totalDuration % 60}min</span>
             <span style={{ color: theme.colors.success, fontSize: theme.typography.sizes.sm }}>🟢 {availableSlots.length} libres</span>
-            <span style={{ color: theme.colors.primary, fontSize: theme.typography.sizes.sm, fontWeight: 600 }}>💰 {stats.revenue}€</span>
+            <span style={{ color: theme.colors.primary, fontSize: theme.typography.sizes.sm, fontWeight: 600 }}>💰 {formatPrice(stats.revenue)}</span>
           </div>
         </div>
         <select value={filterService} onChange={(e) => setFilterService(e.target.value)}

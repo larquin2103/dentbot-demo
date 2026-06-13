@@ -1,4 +1,5 @@
 import { format } from 'date-fns';
+import { formatPrice } from './currency';
 
 // Variables de entorno (sin valores hardcodeados)
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -8,11 +9,11 @@ const SCOPES = 'https://www.googleapis.com/auth/calendar https://www.googleapis.
 // Servicios para referencia
 const SERVICES = {
   consulta: { name: 'Primera consulta', duration: 30, price: 'Gratis' },
-  limpieza: { name: 'Limpieza dental', duration: 30, price: '60€' },
-  blanqueamiento: { name: 'Blanqueamiento', duration: 90, price: '150€' },
+  limpieza: { name: 'Limpieza dental', duration: 30, price: formatPrice(60) },
+  blanqueamiento: { name: 'Blanqueamiento', duration: 90, price: formatPrice(150) },
   ortodoncia: { name: 'Ortodoncia', duration: 30, price: 'Consulta gratis' },
-  implante: { name: 'Implante dental', duration: 90, price: '1.200€' },
-  urgencia: { name: 'Urgencia', duration: 30, price: '90€' }
+  implante: { name: 'Implante dental', duration: 90, price: formatPrice(1200) },
+  urgencia: { name: 'Urgencia', duration: 30, price: formatPrice(90) }
 };
 
 let tokenClient = null;

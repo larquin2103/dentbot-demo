@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { formatPrice } from './currency';
 
 // Datos de la clínica desde variables de entorno
 const CLINIC_NAME    = import.meta.env.VITE_CLINIC_NAME;
@@ -11,11 +12,11 @@ const CLINIC_EMAIL   = import.meta.env.VITE_CLINIC_EMAIL;
 // Servicios con sus detalles
 const SERVICES = {
   consulta:       { name: 'Primera consulta',  color: '#4CAF50', duration: 30,  icon: '🦷', price: 'Gratis' },
-  limpieza:       { name: 'Limpieza dental',   color: '#2196F3', duration: 30,  icon: '✨', price: '60€' },
-  blanqueamiento: { name: 'Blanqueamiento',    color: '#FF9800', duration: 90,  icon: '😁', price: '150€' },
+  limpieza:       { name: 'Limpieza dental',   color: '#2196F3', duration: 30,  icon: '✨', price: formatPrice(60) },
+  blanqueamiento: { name: 'Blanqueamiento',    color: '#FF9800', duration: 90,  icon: '😁', price: formatPrice(150) },
   ortodoncia:     { name: 'Ortodoncia',        color: '#9C27B0', duration: 30,  icon: '🦷', price: 'Consulta gratis' },
-  implante:       { name: 'Implante dental',   color: '#F44336', duration: 90,  icon: '🔩', price: '1.200€' },
-  urgencia:       { name: 'Urgencia',          color: '#FF5722', duration: 30,  icon: '⚡', price: '90€' }
+  implante:       { name: 'Implante dental',   color: '#F44336', duration: 90,  icon: '🔩', price: formatPrice(1200) },
+  urgencia:       { name: 'Urgencia',          color: '#FF5722', duration: 30,  icon: '⚡', price: formatPrice(90) }
 };
 
 // Doctores disponibles
@@ -59,7 +60,7 @@ export function exportToPDF(day, appointments, stats) {
   doc.setTextColor(50, 50, 50);
   doc.text(`Total citas: ${stats.total}`, 20, 56);
   doc.text(`Tiempo total: ${Math.floor(stats.totalDuration / 60)}h ${stats.totalDuration % 60}min`, 20, 63);
-  doc.text(`Ingresos estimados: ${stats.revenue}€`, 20, 70);
+  doc.text(`Ingresos estimados: ${formatPrice(stats.revenue)}`, 20, 70);
   
   // Tabla de citas
   let y = 85;
@@ -124,7 +125,7 @@ export function generateWhatsAppMessage(day, appointments, stats) {
   message += `📅 *Resumen de Citas - ${dateStr}*\n\n`;
   message += `📊 Total: ${stats.total} citas\n`;
   message += `⏱️ Tiempo: ${Math.floor(stats.totalDuration / 60)}h ${stats.totalDuration % 60}min\n`;
-  message += `💰 Ingresos est.: ${stats.revenue}€\n\n`;
+  message += `💰 Ingresos est.: ${formatPrice(stats.revenue)}\n\n`;
   message += `📋 *Citas del día:*\n\n`;
   
   appointments
@@ -192,7 +193,7 @@ export function generateEmailContent(day, appointments, stats) {
           <div class="label">Tiempo Total</div>
         </div>
         <div class="stat-card">
-          <div class="number">${stats.revenue}€</div>
+          <div class="number">${formatPrice(stats.revenue)}</div>
           <div class="label">Ingresos Est.</div>
         </div>
       </div>

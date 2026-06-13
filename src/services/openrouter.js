@@ -5,6 +5,8 @@
 
 const CHAT_ENDPOINT = '/.netlify/functions/chat';
 
+import { formatPrice } from './currency';
+
 const CLINIC_NAME = import.meta.env.VITE_CLINIC_NAME || 'Clínica Dental Sonrisa Perfecta';
 
 async function callChatFunction(payload) {
@@ -59,13 +61,13 @@ function getLocalResponse(message) {
     return `Perfecto. Te ayudo a reservar tu cita en un momento.\n[INICIAR_RESERVA]`;
   }
   if (msg.includes('precio') || msg.includes('coste') || msg.includes('cuanto') || msg.includes('cuánto')) {
-    return 'Nuestros precios:\n• 🦷 Primera consulta: gratis\n• ✨ Limpieza: 60€\n• 😁 Blanqueamiento: 150€\n• 🦷 Ortodoncia: valoración gratis\n• 🔩 Implante: desde 1.200€\n• ⚡ Urgencia: 90€\n\n¿Te reservo la primera consulta? Es gratuita y dura solo 30 min.';
+    return `Nuestros precios:\n• 🦷 Primera consulta: gratis\n• ✨ Limpieza: ${formatPrice(60)}\n• 😁 Blanqueamiento: ${formatPrice(150)}\n• 🦷 Ortodoncia: valoración gratis\n• 🔩 Implante: desde ${formatPrice(1200)}\n• ⚡ Urgencia: ${formatPrice(90)}\n\n¿Te reservo la primera consulta? Es gratuita y dura solo 30 min.`;
   }
   if (msg.includes('horario') || msg.includes('abierto') || msg.includes('cuando')) {
     return 'Atendemos L-V de 9 a 14 y de 16 a 19, sábados de 9 a 13. ¿Quieres que te reserve hueco?';
   }
   if (msg.includes('dolor') || msg.includes('urgencia') || msg.includes('duele')) {
-    return `Si tienes dolor podemos atenderte con prioridad hoy o mañana. La urgencia cuesta 90€. ¿Te reservo hueco ahora?\n[INICIAR_RESERVA]`;
+    return `Si tienes dolor podemos atenderte con prioridad hoy o mañana. La urgencia cuesta ${formatPrice(90)}. ¿Te reservo hueco ahora?\n[INICIAR_RESERVA]`;
   }
   if (msg.includes('miedo') || msg.includes('nervios')) {
     return 'Es muy común. La primera consulta es solo conocer al doctor, sin tratamiento ese día, y es gratuita. ¿Te reservo cita?';

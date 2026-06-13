@@ -9,6 +9,15 @@ const CLINIC_ADDRESS = process.env.VITE_CLINIC_ADDRESS || 'Av. Principal 123';
 const CLINIC_PHONE = process.env.VITE_CLINIC_PHONE || '+34 900 123 456';
 const CLINIC_DOCTOR = process.env.VITE_CLINIC_DOCTOR || 'Dr. Alejandro Martínez';
 
+// Moneda configurable (misma lógica que src/services/currency.js, pero server-side)
+const CURRENCY = (process.env.VITE_CLINIC_CURRENCY || '€').trim();
+const CURRENCY_POSITION = (process.env.VITE_CLINIC_CURRENCY_POSITION || 'after').toLowerCase();
+const CURRENCY_SEP = CURRENCY.length > 1 ? ' ' : '';
+const formatPrice = (amount) => {
+  const n = new Intl.NumberFormat('es-ES', { useGrouping: true }).format(amount);
+  return CURRENCY_POSITION === 'before' ? `${CURRENCY}${CURRENCY_SEP}${n}` : `${n}${CURRENCY_SEP}${CURRENCY}`;
+};
+
 const SYSTEM_PROMPT = `Eres "Sonríe", asistente virtual de ${CLINIC_NAME}.
 
 # Identidad y tono
@@ -24,11 +33,11 @@ horarios) es contexto que conduce a esa cita.
 
 # Catálogo de servicios (los únicos que ofreces)
 - 🦷 Primera consulta — Gratis · 30 min
-- ✨ Limpieza dental — 60€ · 30 min
-- 😁 Blanqueamiento — 150€ · 90 min
+- ✨ Limpieza dental — ${formatPrice(60)} · 30 min
+- 😁 Blanqueamiento — ${formatPrice(150)} · 90 min
 - 🦷 Ortodoncia — Valoración gratuita · 30 min
-- 🔩 Implante dental — desde 1.200€ · 90 min
-- ⚡ Urgencia dental — 90€ · 30 min
+- 🔩 Implante dental — desde ${formatPrice(1200)} · 90 min
+- ⚡ Urgencia dental — ${formatPrice(90)} · 30 min
 
 Cuando listes servicios o menciones uno concreto, usa su emoji por delante.
 

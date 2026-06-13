@@ -31,6 +31,8 @@ Copia `.env.example` a `.env` y rellena los valores. **Distinción clave:**
 | `VITE_GOOGLE_API_KEY` | Público | API de Google Calendar |
 | `VITE_CLINIC_NAME` | Público | Nombre de la clínica (UI, PDF, emails, system prompt) |
 | `VITE_CLINIC_ADDRESS`, `VITE_CLINIC_PHONE`, `VITE_CLINIC_EMAIL`, `VITE_CLINIC_DOCTOR` | Público | Datos de contacto de la clínica |
+| `VITE_CLINIC_CURRENCY` | Público | Moneda de los precios: símbolo o código (`€` def., `$`, `MXN`…) |
+| `VITE_CLINIC_CURRENCY_POSITION` | Público | Posición del símbolo: `after` (def., `60€`) o `before` (`$60`) |
 
 > **Atención:** los archivos `.env*` (salvo `.env.example`) están en `.gitignore`. Nunca commitear credenciales reales ni exponerlas en logs. En Netlify se configuran en *Site settings → Environment variables*.
 
@@ -57,6 +59,7 @@ Es una SPA de React 18 + Vite. El estado se persiste en `localStorage` del naveg
 - **`netlify/functions/chat.js`** — Proxy server-side a OpenRouter. Guarda la cascada de modelos (claude-3-haiku → gpt-4o-mini → llama-3.1-70b) y el `SYSTEM_PROMPT`. Lee `OPENROUTER_API_KEY` y los `VITE_CLINIC_*` de `process.env`. Maneja `type: 'chat'` y `type: 'reengagement'`.
 - **`calendarSync.js`** — Autenticación OAuth con Google Identity Services cargado dinámicamente. Crea eventos en Google Calendar y genera archivos iCal para descarga.
 - **`exportService.js`** — Exporta el resumen del día a PDF (jsPDF), genera texto para WhatsApp y contenido HTML para email. Define las constantes `SERVICES` y `DOCTORS` usadas también en `CalendarView`.
+- **`currency.js`** — Moneda configurable por la clínica. Expone `CURRENCY` y `formatPrice(amount)`, que toma el importe numérico y aplica `VITE_CLINIC_CURRENCY` + `VITE_CLINIC_CURRENCY_POSITION`. Los precios se guardan como número en cada tabla `SERVICES` y se formatean aquí; la Netlify Function replica la misma lógica para el system prompt.
 
 ### Estilos
 
