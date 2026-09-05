@@ -9,15 +9,31 @@ import { formatPrice } from './currency';
 
 const CLINIC_NAME = import.meta.env.VITE_CLINIC_NAME || 'Clínica Dental Sonrisa Perfecta';
 
+// De dónde salió cada respuesta. La UI lo necesita para no anunciar "en línea"
+// mientras en realidad está contestando el fallback local por palabras clave.
+export const AI_SOURCE = {
+  AI: 'ai',           // respuesta real del LLM vía la Netlify Function
+  OFFLINE: 'offline'  // la función no respondió: respuesta local de respaldo
+};
+
+// Lanza si la función no está disponible (p. ej. `vite dev` sin `netlify dev`)
+// o si responde vacío, para que quien llama pueda distinguir un fallo de
+// transporte de una respuesta legítima del modelo.
 async function callChatFunction(payload) {
   const response = await fetch(CHAT_ENDPOINT, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
   });
-  if (!response.ok) return null;
+  if (!response.ok) {
+    throw new Error(`La función de chat respondió ${response.status}`);
+  }
   const data = await response.json();
-  return data?.content?.trim() || null;
+  const content = data?.content?.trim();
+  if (!content) {
+    throw new Error('La función de chat devolvió una respuesta vacía');
+  }
+  return content;
 }
 
 export async function sendMessageToSonrieBot(userMessage, conversationHistory = []) {
@@ -27,11 +43,11 @@ export async function sendMessageToSonrieBot(userMessage, conversationHistory = 
       userMessage,
       history: conversationHistory.map(m => ({ role: m.role, content: m.content }))
     });
-    if (content) return content;
+    return { content, source: AI_SOURCE.AI };
   } catch (e) {
     console.warn('Chat function falló:', e.message);
+    return { content: getLocalResponse(userMessage), source: AI_SOURCE.OFFLINE };
   }
-  return getLocalResponse(userMessage);
 }
 
 export async function generateReengagementMessage(conversationHistory, level) {
@@ -41,14 +57,16 @@ export async function generateReengagementMessage(conversationHistory, level) {
       level,
       history: conversationHistory.map(m => ({ role: m.role, content: m.content }))
     });
-    if (content) return content;
+    return { content, source: AI_SOURCE.AI };
   } catch (e) {
     console.warn('Reengagement function falló:', e.message);
+    return {
+      content: level === 'soft'
+        ? '¿Sigues ahí? Si necesitas algo más, te leo.'
+        : `Antes de irte: la primera consulta en ${CLINIC_NAME} es gratuita y solo lleva 30 min. ¿Te reservo hueco esta semana?\n\n[INICIAR_RESERVA]`,
+      source: AI_SOURCE.OFFLINE
+    };
   }
-
-  return level === 'soft'
-    ? '¿Sigues ahí? Si necesitas algo más, te leo.'
-    : `Antes de irte: la primera consulta en ${CLINIC_NAME} es gratuita y solo lleva 30 min. ¿Te reservo hueco esta semana?\n\n[INICIAR_RESERVA]`;
 }
 
 function getLocalResponse(message) {
@@ -78,8 +96,8 @@ function getLocalResponse(message) {
 
 export async function testChatConnection() {
   try {
-    const content = await callChatFunction({ type: 'chat', userMessage: 'ping', history: [] });
-    return { success: !!content };
+    await callChatFunction({ type: 'chat', userMessage: 'ping', history: [] });
+    return { success: true };
   } catch (e) {
     return { success: false, error: e.message };
   }

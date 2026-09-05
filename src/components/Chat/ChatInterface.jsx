@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useChat } from '../../contexts/ChatContext';
 import MessageBubble from './MessageBubble';
@@ -8,22 +8,52 @@ import TypingIndicator from './TypingIndicator';
 import QuickResponses from './QuickResponses';
 import RatingSystem from '../UI/RatingSystem';
 import BookingWidget from './BookingWidgets';
-import { sendMessageToSonrieBot, generateReengagementMessage } from '../../services/openrouter';
+import { sendMessageToSonrieBot, generateReengagementMessage, AI_SOURCE } from '../../services/openrouter';
 import { syncToGoogleCalendar } from '../../services/calendarSync';
 import { useInactivityWatcher } from '../../hooks/useInactivityWatcher';
 import {
   BOOKABLE_SERVICES as SERVICES,
   dayNameToNextDate,
   parseRelativeDay,
-  formatLongDate
+  formatLongDate,
+  getAvailableSlotsForDate
 } from '../../services/scheduling';
 
 const BOOKING_TRIGGER = '[INICIAR_RESERVA]';
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
+
+// Horas "HH:MM" compatibles con lo que escribió el usuario. "10" puede ser las
+// 10:00 o las 22:00; quien decide cuál era es el hueco que exista de verdad,
+// no una suposición sobre la mañana o la tarde.
+function parseTimeCandidates(input) {
+  const match = input.match(/(\d{1,2})\s*(?::|h|\.)?\s*(\d{2})?/);
+  if (!match) return [];
+
+  const hour = parseInt(match[1], 10);
+  const minutes = match[2] ?? '00';
+  if (Number.isNaN(hour) || hour > 23 || parseInt(minutes, 10) > 59) return [];
+
+  // Solo las horas de 1 a 11 son ambiguas ("5" puede ser 05:00 o 17:00).
+  // El 0 y las horas de 12 en adelante ya se leen solas.
+  const isAmbiguous = hour >= 1 && hour <= 11;
+  const prefersAfternoon = /\b(tarde|pm)\b/i.test(input);
+  const hours = isAmbiguous
+    ? (prefersAfternoon ? [hour + 12] : [hour, hour + 12])
+    : [hour];
+
+  return [...new Set(hours)]
+    .filter(h => h <= 23)
+    .map(h => `${String(h).padStart(2, '0')}:${minutes}`);
+}
 
 export default function ChatInterface() {
   const { theme } = useTheme();
   const { state, addMessage, dispatch } = useChat();
   const [inputMessage, setInputMessage] = useState('');
+  // 'unknown' hasta que una respuesta real nos diga si la IA contesta o no.
+  // No afirmamos "en línea" sin haberlo comprobado.
+  const [aiSource, setAiSource] = useState('unknown');
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -61,7 +91,8 @@ export default function ChatInterface() {
     if (state.reengagement.softSent) return;
     dispatch({ type: 'MARK_REENGAGEMENT', payload: 'softSent' });
     try {
-      const text = await generateReengagementMessage(state.messages, 'soft');
+      const { content: text, source } = await generateReengagementMessage(state.messages, 'soft');
+      setAiSource(source);
       addMessage({ role: 'assistant', content: text.replace('[INICIAR_RESERVA]', '').trim() });
     } catch {
       addMessage({ role: 'assistant', content: '¿Sigues ahí? Si necesitas algo más, te leo.' });
@@ -72,7 +103,8 @@ export default function ChatInterface() {
     if (state.reengagement.hardSent) return;
     dispatch({ type: 'MARK_REENGAGEMENT', payload: 'hardSent' });
     try {
-      const text = await generateReengagementMessage(state.messages, 'hard');
+      const { content: text, source } = await generateReengagementMessage(state.messages, 'hard');
+      setAiSource(source);
       const trigger = text.includes('[INICIAR_RESERVA]');
       const cleaned = text.replace('[INICIAR_RESERVA]', '').trim();
       addMessage({ role: 'assistant', content: cleaned });
@@ -214,27 +246,40 @@ export default function ChatInterface() {
       }
 
       case 3: { // Hora
-        const timeMatch = input.match(/(\d{1,2}):?(\d{2})?/);
-        if (timeMatch) {
-          let hours = parseInt(timeMatch[1], 10);
-          const minutes = timeMatch[2] || '00';
-          if (input.toLowerCase().includes('tarde') || hours < 9) {
-            hours += 12;
-          }
-          const timeStr = `${String(hours).padStart(2, '0')}:${minutes}`;
-          dispatch({ type: 'UPDATE_BOOKING_DATA', payload: { time: timeStr } });
-          dispatch({ type: 'NEXT_BOOKING_STEP' });
+        // La hora solo vale si existe como hueco libre ese día. Sin este cruce,
+        // un "99" acaba escrito como 99:00 en la agenda de la clínica.
+        const dateStr = state.bookingFlow.data.date;
+        const slots = dateStr ? getAvailableSlotsForDate(parseISO(dateStr)) : [];
+
+        if (slots.length === 0) {
+          // Volvemos al paso de la fecha: si nos quedáramos en el paso 3, el día
+          // que elija a continuación se leería como si fuera una hora.
+          dispatch({ type: 'PREV_BOOKING_STEP' });
           addMessage({
             role: 'assistant',
-            content: `Hora ${timeStr} reservada. ¿Cuál es tu nombre completo?`
+            content: 'Ese día se ha quedado sin huecos libres. Elige otro, por favor:',
+            widget: { type: 'date-picker' }
           });
-        } else {
-          addMessage({
-            role: 'assistant',
-            content: 'Toca el hueco que prefieras:',
-            widget: { type: 'time-picker', date: state.bookingFlow.data.date }
-          });
+          break;
         }
+
+        const timeStr = parseTimeCandidates(input).find(candidate => slots.includes(candidate));
+
+        if (!timeStr) {
+          addMessage({
+            role: 'assistant',
+            content: 'No tengo ese hueco libre. Estos son los que quedan ese día:',
+            widget: { type: 'time-picker', date: dateStr }
+          });
+          break;
+        }
+
+        dispatch({ type: 'UPDATE_BOOKING_DATA', payload: { time: timeStr } });
+        dispatch({ type: 'NEXT_BOOKING_STEP' });
+        addMessage({
+          role: 'assistant',
+          content: `Hora ${timeStr} reservada. ¿Cuál es tu nombre completo?`
+        });
         break;
       }
 
@@ -255,7 +300,7 @@ export default function ChatInterface() {
         break;
 
       case 5: // Email
-        if (input.includes('@') && input.includes('.')) {
+        if (EMAIL_PATTERN.test(input)) {
           dispatch({ type: 'UPDATE_BOOKING_DATA', payload: { email: input } });
           dispatch({ type: 'NEXT_BOOKING_STEP' });
           addMessage({
@@ -265,13 +310,15 @@ export default function ChatInterface() {
         } else {
           addMessage({
             role: 'assistant',
-            content: 'Ese correo no parece válido. Inténtalo de nuevo (ej: nombre@email.com).'
+            content: 'Ese correo no parece válido. Necesito uno con el formato nombre@dominio.com para enviarte la confirmación.'
           });
         }
         break;
 
-      case 6: // Teléfono y confirmación
-        if (input.length >= 7) {
+      case 6: { // Teléfono y confirmación
+        // Contamos dígitos, no caracteres: "aaaaaaa" mide 7 y no es un teléfono.
+        const digits = input.replace(/\D/g, '');
+        if (digits.length >= 9 && digits.length <= 15) {
           dispatch({ type: 'UPDATE_BOOKING_DATA', payload: { phone: input } });
 
           const bookingData = { ...state.bookingFlow.data, phone: input };
@@ -287,10 +334,11 @@ export default function ChatInterface() {
         } else {
           addMessage({
             role: 'assistant',
-            content: '📱 Por favor, ingresa un número de teléfono válido (mínimo 7 dígitos)'
+            content: 'Ese número no parece válido. Escríbelo con sus 9 dígitos, por ejemplo 600 123 456.'
           });
         }
         break;
+      }
     }
   };
 
@@ -401,7 +449,8 @@ export default function ChatInterface() {
     // Respuesta del agente vía LLM
     dispatch({ type: 'SET_TYPING', payload: true });
     try {
-      const raw = await sendMessageToSonrieBot(message.trim(), state.messages);
+      const { content: raw, source } = await sendMessageToSonrieBot(message.trim(), state.messages);
+      setAiSource(source);
       const hasTrigger = raw.includes(BOOKING_TRIGGER);
       const cleaned = raw.replace(BOOKING_TRIGGER, '').trim();
 
@@ -453,6 +502,28 @@ export default function ChatInterface() {
     }
   };
 
+  // El indicador dice lo que sabemos, no lo que nos gustaría: verde solo cuando
+  // el LLM ha contestado de verdad, ámbar cuando estamos con el respaldo local.
+  const connection = state.bookingFlow.active
+    ? { dot: theme.colors.success, label: 'Reserva en curso', hint: undefined }
+    : {
+        [AI_SOURCE.AI]: {
+          dot: theme.colors.success,
+          label: 'Asistente en línea · Dr. Alejandro Martínez',
+          hint: undefined
+        },
+        [AI_SOURCE.OFFLINE]: {
+          dot: theme.colors.warning,
+          label: 'Modo sin conexión · respuestas básicas',
+          hint: 'La función de chat no responde. El asistente contesta con respuestas locales limitadas hasta que se restablezca.'
+        },
+        unknown: {
+          dot: theme.colors.textLight,
+          label: 'Asistente · Dr. Alejandro Martínez',
+          hint: 'Escribe un mensaje para comprobar la conexión con el asistente.'
+        }
+      }[aiSource];
+
   return (
     <div className="chat-interface" style={{
       display: 'flex',
@@ -485,14 +556,15 @@ export default function ChatInterface() {
         }}>
           <span style={{
             width: 8, height: 8, borderRadius: '50%',
-            background: theme.colors.success, display: 'inline-block',
-            boxShadow: `0 0 0 3px ${theme.colors.success}25`,
+            background: connection.dot, display: 'inline-block',
+            boxShadow: `0 0 0 3px ${connection.dot}25`,
             flexShrink: 0,
           }} />
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {state.bookingFlow.active
-              ? 'Reserva en curso'
-              : 'Asistente en línea · Dr. Alejandro Martínez'}
+          <span
+            style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}
+            title={connection.hint}
+          >
+            {connection.label}
           </span>
         </div>
 
