@@ -27,6 +27,17 @@ const DOCTORS = [
   { id: 4, name: 'Dra. Ana Sánchez',       specialty: 'Odontopediatría',     color: '#4CAF50' }
 ];
 
+// El gris es oscuro a propósito: en el email esta etiqueta lleva texto blanco
+// encima, y un gris claro lo dejaría ilegible.
+const UNASSIGNED_DOCTOR = { name: 'Sin asignar', color: '#475569' };
+
+// El doctor que la clínica asignó de verdad en el panel. Antes se repartían por
+// turnos según la fila (`DOCTORS[index % DOCTORS.length]`), así que el parte del
+// día contradecía lo que la recepción veía en pantalla.
+function resolveDoctor(appointment) {
+  return DOCTORS.find(d => d.id === appointment.doctorId) || UNASSIGNED_DOCTOR;
+}
+
 /**
  * Exportar resumen del día a PDF
  */
@@ -83,7 +94,7 @@ export function exportToPDF(day, appointments, stats) {
     .sort((a, b) => a.time.localeCompare(b.time))
     .forEach((apt, index) => {
       const service = SERVICES[apt.service];
-      const doctor  = DOCTORS[index % DOCTORS.length];
+      const doctor  = resolveDoctor(apt);
       
       if (index % 2 === 0) {
         doc.setFillColor(245, 249, 255);
@@ -130,9 +141,9 @@ export function generateWhatsAppMessage(day, appointments, stats) {
   
   appointments
     .sort((a, b) => a.time.localeCompare(b.time))
-    .forEach((apt, index) => {
+    .forEach((apt) => {
       const service = SERVICES[apt.service];
-      const doctor  = DOCTORS[index % DOCTORS.length];
+      const doctor  = resolveDoctor(apt);
       message += `🕐 ${apt.time} - ${service?.icon} ${service?.name}\n`;
       message += `👤 ${apt.patient}\n`;
       message += `👨‍⚕️ ${doctor.name}\n`;
@@ -210,9 +221,9 @@ export function generateEmailContent(day, appointments, stats) {
           </tr>
         </thead>
         <tbody>
-          ${appointments.sort((a, b) => a.time.localeCompare(b.time)).map((apt, index) => {
+          ${appointments.sort((a, b) => a.time.localeCompare(b.time)).map((apt) => {
             const service = SERVICES[apt.service];
-            const doctor  = DOCTORS[index % DOCTORS.length];
+            const doctor  = resolveDoctor(apt);
             return `
               <tr>
                 <td><strong>${apt.time}</strong></td>

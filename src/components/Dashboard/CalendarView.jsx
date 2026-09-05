@@ -251,7 +251,7 @@ export default function CalendarView() {
               onClick={() => { setCurrentMonth(new Date()); setSelectedDay(new Date()); }}
               style={{
                 background: theme.colors.primary, border: 'none', borderRadius: theme.borderRadius.md,
-                padding: `${theme.spacing.sm} ${theme.spacing.lg}`, cursor: 'pointer', color: 'white',
+                padding: `${theme.spacing.sm} ${theme.spacing.lg}`, cursor: 'pointer', color: theme.colors.onPrimary,
                 fontWeight: 600, fontSize: theme.typography.sizes.sm
               }}
             >
@@ -315,7 +315,7 @@ export default function CalendarView() {
                       textAlign: 'left', position: 'relative'
                     }}
                   >
-                    <div style={{ color: isSelected ? 'white' : theme.colors.text, fontWeight: isCurrentDay ? 700 : 400, fontSize: theme.typography.sizes.base, marginBottom: theme.spacing.xs }}>
+                    <div style={{ color: isSelected ? theme.colors.onPrimary : theme.colors.text, fontWeight: isCurrentDay ? 700 : 400, fontSize: theme.typography.sizes.base, marginBottom: theme.spacing.xs }}>
                       {format(day, 'd')}
                     </div>
                     {dayApps.length > 0 && (
@@ -449,7 +449,7 @@ function ViewToggle({ active, onClick, icon, label, theme }) {
       style={{
         padding: `${theme.spacing.xs} ${theme.spacing.md}`,
         background: active ? theme.colors.primary : 'transparent',
-        color: active ? 'white' : theme.colors.textSecondary,
+        color: active ? theme.colors.onPrimary : theme.colors.textSecondary,
         border: 'none', borderRadius: theme.borderRadius.sm, cursor: 'pointer',
         fontSize: theme.typography.sizes.sm, fontWeight: active ? 600 : 400
       }}

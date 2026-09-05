@@ -58,7 +58,7 @@ export default function Header({ view, onViewChange }) {
     gap: '0.5rem',
     padding: '0.5rem 0.875rem',
     background: active ? theme.colors.primary : 'transparent',
-    color: active ? '#FFFFFF' : theme.colors.textSecondary,
+    color: active ? theme.colors.onPrimary : theme.colors.textSecondary,
     border: 'none',
     borderRadius: theme.borderRadius.md,
     cursor: 'pointer',
@@ -148,11 +148,11 @@ export default function Header({ view, onViewChange }) {
           }}
         >
           <button data-tour="nav-chat" onClick={() => onViewChange('chat')} style={navButton(view === 'chat')} aria-label="Conversación">
-            <ChatIcon color={view === 'chat' ? '#FFFFFF' : theme.colors.textSecondary} />
+            <ChatIcon color={view === 'chat' ? theme.colors.onPrimary : theme.colors.textSecondary} />
             <span className="app-header__tab-label">Chat</span>
           </button>
           <button data-tour="nav-calendar" onClick={() => onViewChange('calendar')} style={navButton(view === 'calendar')} aria-label="Agenda">
-            <CalendarIcon color={view === 'calendar' ? '#FFFFFF' : theme.colors.textSecondary} />
+            <CalendarIcon color={view === 'calendar' ? theme.colors.onPrimary : theme.colors.textSecondary} />
             <span className="app-header__tab-label">Agenda</span>
           </button>
         </div>

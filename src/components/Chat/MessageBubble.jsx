@@ -80,7 +80,7 @@ export default function MessageBubble({ role, content, timestamp, theme }) {
               ? `${theme.borderRadius.lg} ${theme.borderRadius.lg} ${theme.borderRadius.xs} ${theme.borderRadius.lg}`
               : `${theme.borderRadius.lg} ${theme.borderRadius.lg} ${theme.borderRadius.lg} ${theme.borderRadius.xs}`,
             background: isUser ? theme.colors.primary : theme.colors.surface,
-            color: isUser ? '#FFFFFF' : theme.colors.text,
+            color: isUser ? theme.colors.onPrimary : theme.colors.text,
             border: isUser ? 'none' : `1px solid ${theme.colors.border}`,
             boxShadow: isUser ? 'none' : theme.colors.cardShadow,
             lineHeight: 1.55,

@@ -7,6 +7,10 @@ const lightTheme = {
     primary: '#0E4F66',
     primaryLight: '#E6F0F4',
     primaryDark: '#0A3A4D',
+    // Texto e iconos que van encima de `primary`. Existe porque el blanco
+    // fijo no vale en los dos temas: sobre el teal claro del modo oscuro
+    // se queda en 2.5:1 y no pasa AA.
+    onPrimary: '#FFFFFF', // 9.0:1 sobre #0E4F66
 
     secondary: '#0F766E',
     secondaryLight: '#ECFDF5',
@@ -111,6 +115,7 @@ const darkTheme = {
     primary: '#14B8A6',
     primaryLight: '#134E4A',
     primaryDark: '#0F766E',
+    onPrimary: '#042F2E', // 5.8:1 sobre #14B8A6 (el blanco daba 2.5:1)
 
     secondary: '#22D3EE',
     secondaryLight: '#164E63',

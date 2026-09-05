@@ -167,7 +167,7 @@ function OptionButton({ title, description, emoji, primary, onClick, theme }) {
         textAlign: 'left',
         padding: '0.875rem 1rem',
         background: primary ? theme.colors.primary : theme.colors.background,
-        color: primary ? '#FFFFFF' : theme.colors.text,
+        color: primary ? theme.colors.onPrimary : theme.colors.text,
         border: `1px solid ${primary ? theme.colors.primary : theme.colors.border}`,
         borderRadius: theme.borderRadius.lg,
         cursor: 'pointer',

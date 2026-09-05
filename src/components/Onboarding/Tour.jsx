@@ -329,7 +329,7 @@ export default function Tour({ currentView }) {
                 onClick={handleNext}
                 style={{
                   background: theme.colors.primary,
-                  color: '#FFFFFF',
+                  color: theme.colors.onPrimary,
                   border: 'none',
                   borderRadius: theme.borderRadius.md,
                   padding: '0.4rem 0.9rem',

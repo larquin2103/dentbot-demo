@@ -47,6 +47,21 @@ function parseTimeCandidates(input) {
     .map(h => `${String(h).padStart(2, '0')}:${minutes}`);
 }
 
+// La pregunta que le corresponde a cada paso, sin el envoltorio de "retomamos"
+// que usa la reanudación. La necesita el botón de volver atrás para repetir la
+// pregunta del paso al que regresa.
+function bookingStepQuestion(step, data) {
+  switch (step) {
+    case 1: return { content: 'Elige el servicio que necesitas:', widget: { type: 'service-picker' } };
+    case 2: return { content: '¿Qué día prefieres?', widget: { type: 'date-picker' } };
+    case 3: return { content: 'Elige la hora:', widget: { type: 'time-picker', date: data?.date } };
+    case 4: return { content: '¿Cuál es tu nombre completo?' };
+    case 5: return { content: '¿Cuál es tu correo electrónico?' };
+    case 6: return { content: '¿Cuál es tu número de teléfono?' };
+    default: return { content: 'Continuemos con tu reserva.' };
+  }
+}
+
 export default function ChatInterface() {
   const { theme } = useTheme();
   const { state, addMessage, dispatch } = useChat();
@@ -54,6 +69,8 @@ export default function ChatInterface() {
   // 'unknown' hasta que una respuesta real nos diga si la IA contesta o no.
   // No afirmamos "en línea" sin haberlo comprobado.
   const [aiSource, setAiSource] = useState('unknown');
+  // Cancelar borra los seis datos, así que se confirma antes de hacerlo.
+  const [cancelConfirm, setCancelConfirm] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -502,6 +519,26 @@ export default function ChatInterface() {
     }
   };
 
+  const handleGoBack = () => {
+    const previousStep = Math.max(1, state.bookingFlow.step - 1);
+    dispatch({ type: 'PREV_BOOKING_STEP' });
+    const question = bookingStepQuestion(previousStep, state.bookingFlow.data);
+    addMessage({
+      role: 'assistant',
+      content: `Volvemos atrás. ${question.content}`,
+      ...(question.widget ? { widget: question.widget } : {})
+    });
+  };
+
+  const handleConfirmCancel = () => {
+    setCancelConfirm(false);
+    dispatch({ type: 'CANCEL_BOOKING' });
+    addMessage({
+      role: 'assistant',
+      content: 'Has cancelado el proceso de reserva. ¿Necesitas algo más?'
+    });
+  };
+
   // El indicador dice lo que sabemos, no lo que nos gustaría: verde solo cuando
   // el LLM ha contestado de verdad, ámbar cuando estamos con el respaldo local.
   const connection = state.bookingFlow.active
@@ -569,16 +606,39 @@ export default function ChatInterface() {
         </div>
 
         {state.bookingFlow.active && (
-          <div style={{
-            background: theme.colors.primaryLight,
-            color: theme.colors.primary,
-            padding: '0.25rem 0.625rem',
-            borderRadius: theme.borderRadius.full,
-            fontSize: theme.typography.sizes.xs,
-            fontWeight: 600,
-            letterSpacing: '0.02em',
-          }}>
-            Paso {state.bookingFlow.step} de 6
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+            {state.bookingFlow.step > 1 && (
+              <button
+                onClick={handleGoBack}
+                aria-label="Volver al paso anterior de la reserva"
+                style={{
+                  background: 'transparent',
+                  color: theme.colors.text,
+                  border: `1px solid ${theme.colors.borderStrong}`,
+                  borderRadius: theme.borderRadius.full,
+                  padding: '0.25rem 0.625rem',
+                  fontSize: theme.typography.sizes.xs,
+                  fontWeight: 600,
+                  fontFamily: 'inherit',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                ← Atrás
+              </button>
+            )}
+            <div style={{
+              background: theme.colors.primaryLight,
+              color: theme.colors.primary,
+              padding: '0.25rem 0.625rem',
+              borderRadius: theme.borderRadius.full,
+              fontSize: theme.typography.sizes.xs,
+              fontWeight: 600,
+              letterSpacing: '0.02em',
+              whiteSpace: 'nowrap',
+            }}>
+              Paso {state.bookingFlow.step} de 6
+            </div>
           </div>
         )}
       </div>
@@ -655,25 +715,66 @@ export default function ChatInterface() {
           {/* Botón de cancelar agendamiento */}
           {state.bookingFlow.active && (
             <div style={{ textAlign: 'center', marginBottom: theme.spacing.sm }}>
-              <button
-                onClick={() => {
-                  dispatch({ type: 'CANCEL_BOOKING' });
-                  addMessage({
-                    role: 'assistant',
-                    content: 'Has cancelado el proceso de reserva. ¿Necesitas algo más?'
-                  });
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: theme.colors.textSecondary,
-                  cursor: 'pointer',
-                  fontSize: theme.typography.sizes.sm,
-                  fontWeight: 500,
-                }}
-              >
-                Cancelar reserva
-              </button>
+              {cancelConfirm ? (
+                <div style={{
+                  display: 'flex', flexWrap: 'wrap', gap: theme.spacing.xs,
+                  alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <span style={{
+                    fontSize: theme.typography.sizes.sm,
+                    color: theme.colors.textSecondary,
+                  }}>
+                    Se perderá lo que has rellenado.
+                  </span>
+                  <button
+                    onClick={handleConfirmCancel}
+                    style={{
+                      background: theme.colors.errorLight,
+                      color: theme.colors.text,
+                      border: `1px solid ${theme.colors.error}`,
+                      borderRadius: theme.borderRadius.md,
+                      padding: '0.25rem 0.75rem',
+                      fontSize: theme.typography.sizes.sm,
+                      fontWeight: 600,
+                      fontFamily: 'inherit',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Sí, cancelar
+                  </button>
+                  <button
+                    onClick={() => setCancelConfirm(false)}
+                    style={{
+                      background: 'transparent',
+                      color: theme.colors.text,
+                      border: `1px solid ${theme.colors.borderStrong}`,
+                      borderRadius: theme.borderRadius.md,
+                      padding: '0.25rem 0.75rem',
+                      fontSize: theme.typography.sizes.sm,
+                      fontWeight: 600,
+                      fontFamily: 'inherit',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Seguir con la reserva
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setCancelConfirm(true)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: theme.colors.textSecondary,
+                    cursor: 'pointer',
+                    fontSize: theme.typography.sizes.sm,
+                    fontWeight: 500,
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  Cancelar reserva
+                </button>
+              )}
             </div>
           )}
 
@@ -716,7 +817,7 @@ export default function ChatInterface() {
                 padding: '0.5rem 0.875rem',
                 borderRadius: theme.borderRadius.md,
                 background: inputMessage.trim() ? theme.colors.primary : theme.colors.borderLight,
-                color: inputMessage.trim() ? '#FFFFFF' : theme.colors.textLight,
+                color: inputMessage.trim() ? theme.colors.onPrimary : theme.colors.textLight,
                 border: 'none',
                 cursor: inputMessage.trim() ? 'pointer' : 'not-allowed',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
