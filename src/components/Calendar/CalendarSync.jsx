@@ -76,7 +76,7 @@ export default function CalendarSync({
   if (!showButtons) return null;
 
   return (
-    <div style={{ marginBottom: theme.spacing.lg }}>
+    <div>
       <div style={{
         display: 'flex',
         gap: theme.spacing.sm,

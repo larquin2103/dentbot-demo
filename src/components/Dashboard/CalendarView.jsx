@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   format, startOfMonth, endOfMonth, eachDayOfInterval, 
   isSameDay, isToday, addMonths, subMonths, parseISO,
-  addHours, differenceInHours
+  startOfWeek, endOfWeek, isSameMonth,
+  differenceInHours
 } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -19,14 +20,17 @@ import CalendarSync from '../Calendar/CalendarSync';
 import Tooltip from '../Onboarding/Tooltip';
 import { formatPrice } from '../../services/currency';
 
-// Servicios con colores y tiempos (paleta profesional, sin morados ni neón)
+// Servicios con colores y tiempos (paleta profesional, sin morados ni neón).
+// `amount` es el importe numérico y es lo único que se suma; `price` es solo
+// para mostrar. Antes las sumas volvían a extraer el número del texto ya
+// formateado, que es una ida y vuelta innecesaria y frágil.
 const SERVICES = {
-  consulta: { name: 'Primera consulta', color: '#0E7490', duration: 30, icon: '🦷', price: 'Gratis' },
-  limpieza: { name: 'Limpieza dental', color: '#0369A1', duration: 30, icon: '✨', price: formatPrice(60) },
-  blanqueamiento: { name: 'Blanqueamiento', color: '#0F766E', duration: 90, icon: '😁', price: formatPrice(150) },
-  ortodoncia: { name: 'Ortodoncia', color: '#A16207', duration: 30, icon: '🦷', price: 'Consulta gratis' },
-  implante: { name: 'Implante dental', color: '#B91C1C', duration: 90, icon: '🔩', price: formatPrice(1200) },
-  urgencia: { name: 'Urgencia', color: '#C2410C', duration: 30, icon: '⚡', price: formatPrice(90) }
+  consulta: { name: 'Primera consulta', color: '#0E7490', duration: 30, icon: '🦷', amount: 0, price: 'Gratis' },
+  limpieza: { name: 'Limpieza dental', color: '#0369A1', duration: 30, icon: '✨', amount: 60, price: formatPrice(60) },
+  blanqueamiento: { name: 'Blanqueamiento', color: '#0F766E', duration: 90, icon: '😁', amount: 150, price: formatPrice(150) },
+  ortodoncia: { name: 'Ortodoncia', color: '#A16207', duration: 30, icon: '🦷', amount: 0, price: 'Consulta gratis' },
+  implante: { name: 'Implante dental', color: '#B91C1C', duration: 90, icon: '🔩', amount: 1200, price: formatPrice(1200) },
+  urgencia: { name: 'Urgencia', color: '#C2410C', duration: 30, icon: '⚡', amount: 90, price: formatPrice(90) }
 };
 
 const WORK_HOURS = {
@@ -133,10 +137,7 @@ export default function CalendarView() {
       total: dayApps.length,
       totalDuration,
       serviceCount,
-      revenue: dayApps.reduce((sum, apt) => {
-        const price = SERVICES[apt.service]?.price || '0€';
-        return sum + (parseInt(price.replace(/[^0-9]/g, '')) || 0);
-      }, 0)
+      revenue: dayApps.reduce((sum, apt) => sum + (SERVICES[apt.service]?.amount || 0), 0)
     };
   };
 
@@ -178,7 +179,23 @@ export default function CalendarView() {
     return '#666';
   };
 
-  const filteredAppointments = selectedDay 
+  // parseISO lee 'yyyy-MM-dd' en hora local. `new Date(...)` lo leía como UTC,
+  // así que las citas de hoy quedaban "en el pasado" y desaparecían del recuento
+  // semanal mientras seguían contando en "Citas hoy".
+  const today = new Date();
+  const weekStart = startOfWeek(today, { locale: es });
+  const weekEnd = endOfWeek(today, { locale: es });
+  const appointmentsThisWeek = appointments.filter(apt => {
+    const aptDate = parseISO(apt.date);
+    return aptDate >= weekStart && aptDate <= weekEnd;
+  }).length;
+
+  // Los ingresos son los del mes que se está viendo, no los de todo el historial.
+  const monthRevenue = appointments
+    .filter(apt => isSameMonth(parseISO(apt.date), currentMonth))
+    .reduce((sum, apt) => sum + (SERVICES[apt.service]?.amount || 0), 0);
+
+  const filteredAppointments = selectedDay
     ? getAppointmentsForDay(selectedDay).filter(apt => filterService === 'all' || apt.service === filterService)
     : [];
 
@@ -214,14 +231,8 @@ export default function CalendarView() {
 
           <div data-tour="calendar-stats" style={{ display: 'flex', gap: theme.spacing.md, flexWrap: 'wrap' }}>
             <StatCard iconType="calendar" label="Citas hoy" value={getAppointmentsForDay(new Date()).length} subtitle="programadas" color={theme.colors.primary} theme={theme} />
-            <StatCard iconType="week" label="Esta semana" value={appointments.filter(apt => {
-              const aptDate = new Date(apt.date), today = new Date();
-              return aptDate >= today && aptDate <= addHours(today, 168);
-            }).length} subtitle="citas" color={theme.colors.secondary} theme={theme} />
-            <StatCard iconType="revenue" label="Ingresos mes" value={formatPrice(appointments.reduce((sum, apt) => {
-              const price = SERVICES[apt.service]?.price || '0';
-              return sum + (parseInt(price.replace(/[^0-9]/g, '')) || 0);
-            }, 0))} subtitle="estimado" color={theme.colors.accent} theme={theme} />
+            <StatCard iconType="week" label="Esta semana" value={appointmentsThisWeek} subtitle="citas" color={theme.colors.secondary} theme={theme} />
+            <StatCard iconType="revenue" label="Ingresos" value={formatPrice(monthRevenue)} subtitle={`${format(currentMonth, 'MMMM', { locale: es })} · estimado`} color={theme.colors.accent} theme={theme} />
           </div>
         </div>
       </motion.div>
@@ -459,6 +470,31 @@ function ViewToggle({ active, onClick, icon, label, theme }) {
   );
 }
 
+// Métrica del día: el dato pesa y la etiqueta se retira. Antes cada una era un
+// emoji seguido de texto del mismo tamaño, así que ninguna destacaba.
+function DayMetric({ value, label, color, theme }) {
+  return (
+    <div>
+      <div style={{
+        color: color || theme.colors.text,
+        fontSize: theme.typography.sizes.lg,
+        fontWeight: 600,
+        letterSpacing: '-0.01em',
+        lineHeight: 1.2
+      }}>
+        {value}
+      </div>
+      <div style={{
+        color: theme.colors.textSecondary,
+        fontSize: theme.typography.sizes.xs,
+        marginTop: 2
+      }}>
+        {label}
+      </div>
+    </div>
+  );
+}
+
 function ActionButton({ icon, label, color, onClick, theme }) {
   return (
     <motion.button
@@ -486,37 +522,51 @@ function DayDetailPanel({
 }) {
   return (
     <div>
-      <CalendarSync day={day} appointments={allAppointments} stats={stats} onSyncComplete={(merged) => setAppointments(merged)} />
-
+      {/* El día manda en este panel: es el título, y las métricas cuelgan de él. */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: theme.spacing.lg, flexWrap: 'wrap', gap: theme.spacing.md }}>
         <div>
-          <h3 style={{ color: theme.colors.text, margin: 0, textTransform: 'capitalize' }}>
-            📅 {format(day, "EEEE d 'de' MMMM yyyy", { locale: es })}
+          <h3 style={{
+            color: theme.colors.text, margin: 0, textTransform: 'capitalize',
+            fontSize: theme.typography.sizes['2xl'], fontWeight: 600, letterSpacing: '-0.015em'
+          }}>
+            {format(day, "EEEE d 'de' MMMM yyyy", { locale: es })}
           </h3>
-          <div style={{ display: 'flex', gap: theme.spacing.lg, marginTop: theme.spacing.sm }}>
-            <span style={{ color: theme.colors.textSecondary, fontSize: theme.typography.sizes.sm }}>📊 {stats.total} citas</span>
-            <span style={{ color: theme.colors.textSecondary, fontSize: theme.typography.sizes.sm }}>⏱️ {Math.floor(stats.totalDuration / 60)}h {stats.totalDuration % 60}min</span>
-            <span style={{ color: theme.colors.success, fontSize: theme.typography.sizes.sm }}>🟢 {availableSlots.length} libres</span>
-            <span style={{ color: theme.colors.primary, fontSize: theme.typography.sizes.sm, fontWeight: 600 }}>💰 {formatPrice(stats.revenue)}</span>
+          <div style={{ display: 'flex', gap: theme.spacing.lg, marginTop: theme.spacing.md, flexWrap: 'wrap' }}>
+            <DayMetric value={stats.total} label="citas" theme={theme} />
+            <DayMetric value={`${Math.floor(stats.totalDuration / 60)}h ${stats.totalDuration % 60}min`} label="ocupadas" theme={theme} />
+            <DayMetric value={availableSlots.length} label="huecos libres" color={theme.colors.success} theme={theme} />
+            <DayMetric value={formatPrice(stats.revenue)} label="estimado" color={theme.colors.primary} theme={theme} />
           </div>
         </div>
         <select value={filterService} onChange={(e) => setFilterService(e.target.value)}
+          aria-label="Filtrar citas por servicio"
           style={{ padding: theme.spacing.sm, borderRadius: theme.borderRadius.md, border: `1px solid ${theme.colors.border}`, background: theme.colors.background, color: theme.colors.text, cursor: 'pointer' }}>
-          <option value="all">🔍 Todos</option>
+          <option value="all">Todos los servicios</option>
           {Object.entries(services).map(([key, s]) => <option key={key} value={key}>{s.icon} {s.name}</option>)}
         </select>
       </div>
 
-      {/* Botones exportación unificados */}
-      <div style={{ display: 'flex', gap: theme.spacing.sm, marginBottom: theme.spacing.lg, flexWrap: 'wrap' }}>
-        <ActionButton icon="📄" label="PDF" color={theme.colors.primary} onClick={() => exportToPDF(day, allAppointments, stats)} theme={theme} />
-        <ActionButton icon="💬" label="WhatsApp" color="#25D366" onClick={() => shareViaWhatsApp(day, allAppointments, stats)} theme={theme} />
-        <ActionButton icon="📧" label="Email" color={theme.colors.secondary} onClick={() => shareViaEmail(day, allAppointments, stats)} theme={theme} />
-        <ActionButton icon="📋" label="Copiar" color={theme.colors.textSecondary} onClick={() => {
-          const text = generateWhatsAppMessage(day, allAppointments, stats);
-          navigator.clipboard.writeText(text).then(() => alert('✅ Resumen copiado'));
-        }} theme={theme} />
-      </div>
+      {/* Un solo grupo para todo lo que saca el día de la pantalla. Antes la
+          sincronización vivía separada del resto por el título del día. */}
+      <section style={{ marginBottom: theme.spacing.lg }}>
+        <h4 style={{
+          color: theme.colors.textSecondary, margin: `0 0 ${theme.spacing.sm}`,
+          fontSize: theme.typography.sizes.xs, fontWeight: 600,
+          letterSpacing: '0.04em', textTransform: 'uppercase'
+        }}>
+          Exportar y sincronizar
+        </h4>
+        <div style={{ display: 'flex', gap: theme.spacing.sm, flexWrap: 'wrap', marginBottom: theme.spacing.sm }}>
+          <ActionButton icon="📄" label="PDF" color={theme.colors.primary} onClick={() => exportToPDF(day, allAppointments, stats)} theme={theme} />
+          <ActionButton icon="💬" label="WhatsApp" color="#25D366" onClick={() => shareViaWhatsApp(day, allAppointments, stats)} theme={theme} />
+          <ActionButton icon="📧" label="Email" color={theme.colors.secondary} onClick={() => shareViaEmail(day, allAppointments, stats)} theme={theme} />
+          <ActionButton icon="📋" label="Copiar" color={theme.colors.textSecondary} onClick={() => {
+            const text = generateWhatsAppMessage(day, allAppointments, stats);
+            navigator.clipboard.writeText(text).then(() => alert('✅ Resumen copiado'));
+          }} theme={theme} />
+        </div>
+        <CalendarSync day={day} appointments={allAppointments} stats={stats} onSyncComplete={(merged) => setAppointments(merged)} />
+      </section>
 
       {/* Barra ocupación */}
       <div style={{ marginBottom: theme.spacing.lg }}>
@@ -546,10 +596,18 @@ function DayDetailPanel({
 
       {/* Lista citas */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.sm }}>
-        <h4 style={{ color: theme.colors.text, margin: 0 }}>📋 Citas {filterService !== 'all' && `(${services[filterService]?.name})`}</h4>
+        <h4 style={{
+          color: theme.colors.textSecondary, margin: 0,
+          fontSize: theme.typography.sizes.xs, fontWeight: 600,
+          letterSpacing: '0.04em', textTransform: 'uppercase'
+        }}>
+          Citas {filterService !== 'all' && `· ${services[filterService]?.name}`}
+        </h4>
         {appointments.length === 0 ? (
           <div style={{ textAlign: 'center', padding: theme.spacing.xl, color: theme.colors.textSecondary }}>
-            {filterService === 'all' ? 'No hay citas 🎉' : `No hay citas de ${services[filterService]?.name}`}
+            {filterService === 'all'
+              ? `Ningún paciente citado este día. Quedan ${availableSlots.length} huecos libres.`
+              : `Ninguna cita de ${services[filterService]?.name} este día.`}
           </div>
         ) : (
           appointments.sort((a, b) => a.time.localeCompare(b.time)).map((apt, index) => {
@@ -562,10 +620,17 @@ function DayDetailPanel({
                 style={{
                   display: 'flex', alignItems: 'center', gap: theme.spacing.md, padding: theme.spacing.md,
                   background: theme.colors.background, borderRadius: theme.borderRadius.md,
-                  border: `1px solid ${theme.colors.border}`, borderLeft: `4px solid ${service?.color || '#999'}`,
+                  border: `1px solid ${theme.colors.border}`,
                   opacity: apt.status === 'cancelled' ? 0.5 : 1, flexWrap: 'wrap'
                 }}>
                 <div style={{ textAlign: 'center', minWidth: '60px' }}>
+                  {/* El color del servicio sigue estando, pero como punto: la barra
+                      lateral gruesa pesaba más que el propio dato de la fila. */}
+                  <div style={{
+                    width: 6, height: 6, borderRadius: '50%',
+                    background: service?.color || theme.colors.textLight,
+                    margin: '0 auto 6px'
+                  }} />
                   <div style={{ fontSize: theme.typography.sizes.xl, fontWeight: 700, color: theme.colors.text }}>{apt.time}</div>
                   <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.textSecondary }}>{service?.duration}min</div>
                 </div>
@@ -623,7 +688,7 @@ function DayDetailPanel({
         whiteSpace: 'nowrap'
       }}
     >
-      ❌ Cancelar
+      Cancelar
     </motion.button>
 
     {/* AGREGAR ESTO: Botones de confirmación */}
@@ -635,9 +700,9 @@ function DayDetailPanel({
           onClick={() => handleCancelAppointment(apt.id)}
           style={{
             padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
-            background: theme.colors.error,
-            color: 'white',
-            border: 'none',
+            background: theme.colors.errorLight,
+            color: theme.colors.text,
+            border: `1px solid ${theme.colors.error}`,
             borderRadius: theme.borderRadius.sm,
             cursor: 'pointer',
             fontSize: theme.typography.sizes.xs,
@@ -672,7 +737,7 @@ function DayDetailPanel({
     fontSize: theme.typography.sizes.xs,
     whiteSpace: 'nowrap'
   }}>
-    🔒 No cancelable
+    Sin cancelación · faltan menos de 24 h
   </span>
 )}
               </motion.div>
