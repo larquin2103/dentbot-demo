@@ -8,21 +8,23 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "icons": "pwa-assets-generator --override",
     "lint": "eslint . --report-unused-disable-directives --max-warnings 0"
   },
   "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "framer-motion": "^10.16.4",
+    "@netlify/blobs": "^8.1.0",
     "date-fns": "^2.30.0",
-    "jspdf": "^2.5.1",
+    "framer-motion": "^10.16.4",
     "html2canvas": "^1.4.1",
-    "@netlify/blobs": "^8.1.0"
+    "jspdf": "^2.5.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.13.0",
     "@types/react": "^18.2.37",
     "@types/react-dom": "^18.2.15",
+    "@vite-pwa/assets-generator": "^1.0.2",
     "@vitejs/plugin-react": "^4.2.0",
     "eslint": "^9.13.0",
     "eslint-plugin-react": "^7.37.2",
