@@ -7,9 +7,9 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'prompt',
-      // El service worker se genera pero todavía NO se registra: el aviso de
-      // "hay una versión nueva" es la fase 5 del plan, y dejar un SW activo sin
-      // manera de actualizarlo deja a la gente atrapada en una versión vieja.
+      // No se inyecta el script de registro del plugin: el registro lo hace
+      // `UpdatePrompt`, que necesita el `onNeedRefresh` de `registerSW` para
+      // avisar de la versión nueva en vez de recargar la página sin permiso.
       injectRegister: false,
       includeAssets: ['tooth-icon.svg', 'favicon.ico', 'apple-touch-icon-180x180.png', 'robots.txt'],
       manifest: {
@@ -47,10 +47,30 @@ export default defineConfig({
         ]
       },
       workbox: {
-        // Las funciones de Netlify nunca se sirven desde caché: una respuesta
-        // vieja del asistente presentada como nueva es peor que no responder.
+        // Workbox no precachea fuentes por defecto. Sin el woff2, la app abriría
+        // sin conexión con la letra del sistema: justo lo que se quiso evitar al
+        // dejar de servir Inter desde Google.
+        // Los iconos ya entran por `includeAssets`: repetirlos aquí los mete
+        // dos veces en el precache y se descargarían dos veces.
+        globPatterns: ['**/*.{js,css,html,woff2}'],
+        // El redirect SPA vive en netlify.toml y lo resuelve el servidor. Sin
+        // conexión no hay servidor, así que el service worker tiene que
+        // responder lo mismo para que la agenda abra desde el icono.
         navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/\.netlify\//]
+        // Salvo en /.netlify/, que no son vistas de la app: devolverles el index
+        // convertiría un fallo de red en una página HTML que el cliente
+        // intentaría leer como JSON.
+        navigateFallbackDenylist: [/^\/\.netlify\//],
+        runtimeCaching: [
+          {
+            // Las funciones nunca se sirven desde caché: una respuesta vieja del
+            // asistente presentada como nueva es peor que no responder. Hoy
+            // ninguna regla las alcanzaría, pero queda escrito para que añadir
+            // una más adelante no se las lleve por delante.
+            urlPattern: ({ url }) => url.pathname.startsWith('/.netlify/'),
+            handler: 'NetworkOnly'
+          }
+        ]
       }
     })
   ],

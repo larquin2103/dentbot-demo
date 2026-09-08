@@ -7,6 +7,7 @@ import CalendarView from './components/Dashboard/CalendarView'
 import Header from './components/UI/Header'
 import WelcomeModal from './components/Onboarding/WelcomeModal'
 import Tour from './components/Onboarding/Tour'
+import UpdatePrompt from './components/UI/UpdatePrompt'
 import { motion, AnimatePresence } from 'framer-motion'
 import './App.css'
 
@@ -71,6 +72,7 @@ function AppShell() {
 
       <WelcomeModal />
       <Tour currentView={view} />
+      <UpdatePrompt />
     </div>
   )
 }
