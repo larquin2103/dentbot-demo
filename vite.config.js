@@ -19,11 +19,13 @@ export default defineConfig({
         lang: 'es',
         dir: 'ltr',
         // `id` fija la identidad de la app. Sin él, Chrome la deriva de
-        // `start_url`, y cuando la fase 4 lo cambie a '/?view=calendar' pasaría
-        // a verla como otra aplicación distinta: el dueño acabaría con dos
-        // instalaciones del mismo panel.
+        // `start_url`, que ahora apunta a '/?view=calendar': cualquier cambio
+        // futuro de esa vista de arranque se leería como otra aplicación
+        // distinta y el dueño acabaría con dos instalaciones del mismo panel.
         id: '/',
-        start_url: '/',
+        // Si instala un icono es para consultar el día, no para abrir el chat:
+        // la app arranca en la agenda.
+        start_url: '/?view=calendar',
         scope: '/',
         display: 'standalone',
         orientation: 'portrait',
@@ -35,6 +37,13 @@ export default defineConfig({
           { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
           { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' },
           { src: 'maskable-icon-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+        ],
+        // Accesos directos del icono instalado (pulsación larga en Android).
+        // Son URLs normales de la app: las resuelve el mismo `?view=` que lee
+        // App.jsx al arrancar, sin router de por medio.
+        shortcuts: [
+          { name: 'Agenda del día', short_name: 'Agenda', url: '/?view=calendar' },
+          { name: 'Asistente', short_name: 'Asistente', url: '/?view=chat' }
         ]
       },
       workbox: {
