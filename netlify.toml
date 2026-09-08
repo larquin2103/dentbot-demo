@@ -4,7 +4,11 @@
   functions = "netlify/functions"
 
 [build.environment]
-  NODE_VERSION = "18"
+  # Node 20 o superior es obligatorio desde que entró vite-plugin-pwa: su cadena
+  # workbox-build → @rollup/plugin-terser → serialize-javascript usa el `crypto`
+  # global, que en Node 18 no existe y rompe el build con "crypto is not defined".
+  # Se fija 22 porque además Node 18 y 20 ya están fuera de soporte.
+  NODE_VERSION = "22"
 
 [[redirects]]
   from = "/*"
